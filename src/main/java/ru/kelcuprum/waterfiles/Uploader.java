@@ -142,7 +142,7 @@ public class Uploader {
         }
     }
 
-    public static CoffeeLogger LOG = new CoffeeLogger("PepeLand Helper");
+    public static CoffeeLogger LOG = new CoffeeLogger("WaterFiles/Uploader");
 
     static long kilo = 1024;
     static long mega = kilo * kilo;
