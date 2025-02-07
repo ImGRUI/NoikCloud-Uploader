@@ -38,5 +38,10 @@ bin/
 ### VS Code ###
 .vscode/
 
+files
+.idea
+index.html
+config.json
+
 ### Mac OS ###
 .DS_Store
