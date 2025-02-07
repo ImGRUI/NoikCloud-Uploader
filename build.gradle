@@ -1,0 +1,81 @@
+plugins {
+    id 'java'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'java'
+
+archives_base_name = project.archives_base_name
+group = project.maven_group
+
+static def getDate() {
+    return new Date().format('yyyy.MM.dd HH-mm')
+}
+version = "${getDate()}"
+
+configurations { shadow }
+dependencies {
+    shadow implementation('org.jetbrains:annotations:26.0.1')
+    shadow implementation('org.projectlombok:lombok:1.18.26')
+    shadow implementation('org.projectlombok:lombok:1.18.26')
+    shadow implementation('commons-io:commons-io:2.18.0')
+    shadow implementation('commons-codec:commons-codec:1.17.1')
+    testImplementation platform('org.junit:junit-bom:5.9.1')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+
+    // Express.JS :ImFine:
+    shadow implementation('ru.kelcuprum:java-express:0.2.4-dev.15');
+
+    // Libs
+    shadow implementation("ch.qos.logback:logback-classic:1.4.14")
+    shadow implementation("ru.kelcuprum:CaffeineLib:1.0.0-dev.2")
+
+    // JSON
+    shadow implementation("com.google.code.gson:gson:2.10.1")
+}
+
+processResources {
+    inputs.property "version", project.version
+    filteringCharset "UTF-8"
+
+    filesMatching("release.json") {
+        expand "version": project.version
+    }
+}
+
+def targetJavaVersion = 21
+tasks.withType(JavaCompile).configureEach {
+    // ensure that the encoding is set to UTF-8, no matter what the system default is
+    // this fixes some edge cases with special characters not displaying correctly
+    // see http://yodaconditions.net/blog/fix-for-java-file-encoding-problems-with-gradle.html
+    // If Javadoc is generated, this must be specified in that task too.
+    it.options.encoding = "UTF-8"
+    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+        it.options.release = targetJavaVersion
+    }
+}
+
+test {
+    useJUnitPlatform()
+}
+
+// Produce additional distributions
+java {
+    withSourcesJar()
+}
+
+// Produce a fat-jar of all shaded dependencies
+
+components.java.withVariantsFromConfiguration(configurations.shadowRuntimeElements) { skip() }
+
+jar {
+    from("LICENSE") {
+        rename { "${it}_${project.archivesBaseName}"}
+    }
+    manifest {
+        attributes(
+                'Main-Class': 'ru.kelcuprum.waterfiles.Uploader'
+        )
+    }
+}

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html ondrop="console.log(event)">
+
+<head>
+    <meta charset="UTF-8">
+    <title>WaterFiles > Uploader</title>
+    <meta name="darkreader-lock">
+
+    <meta property="og:site_name" content="WaterFiles > Uploader v{version}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://wfu.kelcu.ru" />
+    <meta property="og:image" content="https://wf.kelcu.ru/icons/document.png" />
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="128">
+    <meta property="og:image:height" content="128">
+    <meta property="og:description"
+        content="Отечественный аналог kappa.lol и всех подобных продуктов западной прапоганды" />
+    <meta name="description" content="Отечественный аналог kappa.lol и всех подобных продуктов западной прапоганды" />
+    <meta name="theme-color" content="#323E4F">
+    <meta name="twitter:site" content="@kel_cu">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        let fileInput;
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        document.addEventListener("DOMContentLoaded", function (event) {
+            loadHistory()
+            fileInput = document.getElementById("file");
+            fileInput.addEventListener("change", (s) => {
+                if (s.target.files.length >= 1) {
+                    console.log(s.target.files)
+                    uploadFile(s.target.files[0])
+                }
+            })
+            let dropZone = document.getElementsByClassName('outer')[0];
+            dropZone.addEventListener('dragover', preventDefaults);
+            dropZone.addEventListener('dragenter', preventDefaults);
+            dropZone.addEventListener('dragleave', preventDefaults);
+            dropZone.addEventListener('drop', (event) => {
+                if (event.dataTransfer.files.length >= 1) {
+                    uploadFile(event.dataTransfer.files[0])
+                    event.preventDefault();
+                }
+            });
+        })
+        const uploadFile = (file) => {
+            if (file.size > 104857600) {
+                alert("Файл весит больше 100мб!")
+                return;
+            }
+            document.getElementById("title").innerText = "Пожалуйста подождите...";
+            document.getElementById("description").innerHTML = "Это может занять некоторое время!"
+            document.getElementById("msg")
+                .innerHTML = "";
+            if (/[а-яА-Я`]/.test(file.name)) {
+                let type = file.name.split("\.").length <= 1 ? "" : file.name.split("\.")[file.name.split("\.").length - 1]
+                var newFile
+                var blob = file.slice(0, file.size, file.type);
+                newFile = new File([blob], 'name.' + type, { type: file.type });
+                file = newFile;
+            }
+            console.log(file.type)
+            fetch('/upload', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': file.type,
+                    'X-File-Name': file.name
+                },
+                body: file
+            })
+                .then(response => response.json())
+                .then(suckass => {
+                    if (suckass.error) {
+                        document.getElementById("title").innerText = "Произошла ошибка!";
+                        document.getElementById("description").innerHTML = "[" + suckass.error.code + "/" + suckass.error.codename + "] " + suckass.error.message;
+                    } else {
+                        document.getElementById("oh").value = suckass.url;
+                        document.getElementById("title").innerText = "Файл загружен!";
+                        document.getElementById("description").innerHTML = "<a href=\"" + suckass.url + "\">" + suckass.url + "</a> <button onclick=\"onCopy()\">Скопировать</a>"
+                        addToHistory(suckass.url)
+                    }
+                })
+                .catch(error => {
+                    document.getElementById("title").innerText = "Произошла ошибка!";
+                    document.getElementById("description").innerHTML = "Возможно Роскомнадзор добрался до сюда"
+                    console.error(error); // Handle upload errors
+                });
+        };
+        let history = [];
+        function loadHistory() {
+            if (localStorage.getItem("history") == null) {
+                localStorage.setItem("history", "[]");
+            }
+            history = JSON.parse(localStorage.getItem("history"));
+            for (i = 0; i < history.length; i++) {
+                addHistoryElement(history[i])
+            }
+        }
+        function addToHistory(url) {
+            history.push(url);
+            addHistoryElement(url)
+            localStorage.setItem("history", JSON.stringify(history))
+        }
+        function addHistoryElement(url) {
+            let div = document.getElementById("history");
+            if (div.style.display == "none") div.style.display = "";
+            let p = document.createElement("p")
+            let a = document.createElement("a")
+            let b = document.createElement("button")
+            a.href = url;
+            a.innerText = url.split("/")[2] + "/" + url.split("/")[3];
+            // a.innerText+=" ";
+            b.innerText = "Копировать";
+            b.onclick = (s) => {
+                let heh = url;
+                document.getElementById("oh").value = heh;
+                onCopy();
+            }
+            b.style = "margin-left: 10pt;"
+            p.appendChild(a);
+            p.appendChild(b);
+            div.appendChild(p);
+        }
+        async function onCopy() {
+            let copyGfGText =
+                document.getElementById("oh");
+            console.log(copyGfGText.value)
+            try {
+                await navigator.clipboard.writeText(copyGfGText.value);
+                console.log('Content copied to clipboard');
+            } catch (err) {
+                console.error('Failed to copy: ', err);
+            }
+        }
+    </script>
+    <style>
+        html {
+            background: #11111b;
+            font-family: "Source Code Pro", monospace;
+            color: #fff;
+        }
+
+        .outer {
+            display: table;
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 100%;
+        }
+
+        .middle {
+            display: table-cell;
+            vertical-align: middle;
+        }
+
+        .inner {
+            margin-left: auto;
+            margin-right: auto;
+            width: 75%;
+            max-width: 500pt;
+            padding: 4pt;
+            /* border: dashed 0.10pc #4c8a5b; */
+            /* background: #354d5963; */
+            /* Whatever width you want */
+        }
+
+        [id=content] {
+            background-color: #181825;
+            padding: 16pt;
+            border-radius: 16pt;
+        }
+
+        [id=head] {
+            background-color: #181825;
+            padding: 8pt;
+            border-radius: 16pt;
+            margin-bottom: 8pt;
+        }
+
+        [id=warn] {
+            background-color: #ce5783;
+            padding: 8pt;
+            border-radius: 16pt;
+            margin-top: 8pt;
+            margin-bottom: 8pt;
+        }
+
+        [id=history] {
+            background-color: #181825;
+            padding: 8pt;
+            border-radius: 16pt;
+            margin-top: 8pt;
+        }
+
+        [id=warn] hr {
+            color: #fff;
+        }
+
+        h1,
+        h2,
+        h3,
+        p {
+            margin: 4pt;
+        }
+
+        a {
+            color: #ffffffd3;
+            text-decoration: none;
+        }
+
+        a::selection,
+        p::selection,
+        h1::selection,
+        h2::selection,
+        h3::selection,
+        br::selection {
+            color: #09090b;
+            background-color: #fff;
+        }
+
+        h3::selection {
+            color: #09090b;
+            background-color: #7f916f;
+        }
+
+        p,
+        a {
+            color: #ffffffd3;
+            font-size: 16pt;
+            margin-top: 8pt;
+            margin-bottom: 4pt;
+        }
+
+        a:hover {
+            color: #7f916f;
+            text-decoration: underline dashed;
+        }
+
+        .dropzone {
+            box-sizing: border-box;
+            display: none;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            left: 0;
+            top: 0;
+            z-index: 99999;
+
+            /* background: rgba(, .8);
+            border: 11px dashed $colorBlue; */
+        }
+
+        button {
+            background-color: #7f916f;
+            border: 0;
+            padding: 5pt;
+            border-radius: 5pt;
+            color: #fff;
+        }
+        
+        input[type=file],
+        input[type=file] button{
+            font-size: 10pt;
+            background-color: #242436;
+            border: 0;
+            padding: 5pt;
+            border-radius: 5pt;
+            color: #fff;
+        }
+
+        input::file-selector-button {
+            background-color: #7f916f;
+            border: 0;
+            margin-right: 10pt;
+            padding: 5pt;
+            border-radius: 5pt;
+            color: #fff;
+        }
+        input::file-selector-button:hover{
+            background-color: #fff;
+            color: #000;
+        }
+
+        button:hover {
+            background-color: #fff;
+            color: #000;
+        }
+
+        button:focus {
+            border: dashed 1pt #7f916f;
+            background-color: #fff;
+            color: #000;
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+</head>
+
+<body>
+    <div class="outer">
+        <div class="middle">
+            <div class="inner">
+                <div id="head" style="height: auto !important;">
+                    <h2 style="text-align: center;">{hostname}</h2>
+                </div>
+                <div id="warn" style="height: auto !important;">
+                    <h3 style="text-align: center;">Данный сервис находится на стадии разработки и может иметь недочеты</h3>
+                </div>
+                <div id="content" style="height: auto !important;" align="center">
+                    <input id="oh" style="display: none;">
+                    <img src="https://wf.kelcu.ru/icons/document.png" width="128pt" align="center" id="image">
+                    <h2 id="title">Перетащите сюда файл</h2>
+                    <p id="description">или выберете его здесь</p>
+                    <p id="msg"></p>
+                    <br>
+                    <input type="file" id="file" name="file" />
+                </div>
+                <div id="history" style="height: auto !important; display: none;">
+                    <h2 style="text-align: center;">Ваши файлы:</h2>
+                </div>
+                <!-- <div id="warn" style="height: auto !important;">
+                    <p style="text-align: center;">В случае поступлении жалобы от РКН ваш файл может быть удален!</p>
+                </div> -->
+                <p style="color:#ffffff75; font-size: 10pt; text-align: center;"><a
+                        style="color:#ffffffa7; font-size: 13pt;" href="https://kelcu.ru/">Сделано с ❤ от
+                        Кела</a><br>WaterFiles > Uploader<br>v{version}</p>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
