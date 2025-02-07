@@ -42,6 +42,7 @@ files
 .idea
 index.html
 config.json
+files.json
 
 ### Mac OS ###
 .DS_Store

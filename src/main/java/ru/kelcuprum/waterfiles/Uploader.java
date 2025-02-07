@@ -1,5 +1,7 @@
 package ru.kelcuprum.waterfiles;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import express.Express;
 import express.middleware.Middleware;
@@ -13,16 +15,19 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 
 import static ru.kelcuprum.waterfiles.Objects.BAD_REQUEST;
 import static ru.kelcuprum.waterfiles.Objects.getErrorObject;
 
 public class Uploader {
     public static Express server;
-    public static Config config = new Config("config.json");
+    public static Config config = new Config("./config.json");
+    public static Config links = new Config("./files.json");
     public static File mainFolder = new File("./files");
     public static String html = "";
     public static Config release = new Config(new JsonObject());
+    public static HashMap<String, String> fileNames = new HashMap<>();
 
     public static void main(String[] args) throws IOException {
         InputStream releaseFile = Uploader.class.getResourceAsStream("/index.html");
@@ -33,6 +38,10 @@ public class Uploader {
         } catch (IOException e) {
             LOG.debug(e.getMessage());
         }
+        JsonArray h = links.getJsonArray("names", new JsonArray());
+        links.load();
+        for(JsonElement element : h)
+            fileNames.put(((JsonObject) element).get("id").getAsString(), ((JsonObject) element).get("name").getAsString());
         LOG.log("Hello, world!");
         mainFolder = new File(config.getString("folder", "./files"));
         checkFolders();
@@ -46,6 +55,7 @@ public class Uploader {
                 if (file.isFile()) {
                     String name = file.getName().split("\\.")[0];
                     if (name.equals(id)) {
+                        if(fileNames.containsKey(name)) res.setHeader("Content-Disposition", "filename=\""+fileNames.get(name)+"\"");
                         res.send(file.toPath());
                         break;
                     }
@@ -75,6 +85,7 @@ public class Uploader {
                         String id = makeID(7);
                         File file = mainFolder.toPath().resolve(id + fileType).toFile();
                         saveFile(bytes, file);
+                        addFilename(id, fileName);
                         JsonObject resp = new JsonObject();
                         resp.addProperty("id", id);
                         resp.addProperty("url", String.format("%1$s/%2$s", config.getString("url", "https://wfu.kelcu.ru"), id));
@@ -110,7 +121,21 @@ public class Uploader {
         LOG.log(String.format("Порт: %s", config.getNumber("port", 1984).intValue()));
         LOG.log("-=-=-=-=-=-=-=-=-=-=-=-=-");
     }
-
+    public static void addFilename(String id, String name){
+        fileNames.put(id, name);
+        saveFilenames();
+    }
+    public static void saveFilenames(){
+        JsonArray j = new JsonArray();
+        for(String key : fileNames.keySet()){
+            JsonObject jj = new JsonObject();
+            jj.addProperty("id", key);
+            jj.addProperty("name", fileNames.get(key));
+            j.add(jj);
+        }
+        links.setJsonArray("names", j);
+        links.save();
+    }
     public static void saveFile(byte[] is, File targetFile) throws IOException {
         Files.write(targetFile.toPath(), is);
     }
