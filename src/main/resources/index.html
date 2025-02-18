@@ -46,6 +46,16 @@
                     event.preventDefault();
                 }
             });
+            document.addEventListener("paste", async e => {
+                e.preventDefault();
+                if (!e.clipboardData.files.length) {
+                    return;
+                }
+                const file = e.clipboardData.files[0];
+                // Read the file's contents, assuming it's a text file.
+                // There is no way to write back to it.
+                uploadFile(file)
+            });
         })
         const uploadFile = (file) => {
             if (file.size > 104857600) {
@@ -262,9 +272,9 @@
             border-radius: 5pt;
             color: #fff;
         }
-        
+
         input[type=file],
-        input[type=file] button{
+        input[type=file] button {
             font-size: 10pt;
             background-color: #242436;
             border: 0;
@@ -281,7 +291,8 @@
             border-radius: 5pt;
             color: #fff;
         }
-        input::file-selector-button:hover{
+
+        input::file-selector-button:hover {
             background-color: #fff;
             color: #000;
         }
@@ -308,13 +319,14 @@
                     <h2 style="text-align: center;">{hostname}</h2>
                 </div>
                 <div id="warn" style="height: auto !important;">
-                    <h3 style="text-align: center;">Данный сервис находится на стадии разработки и может иметь недочеты</h3>
+                    <h3 style="text-align: center;">Данный сервис находится на стадии разработки и может иметь недочеты
+                    </h3>
                 </div>
                 <div id="content" style="height: auto !important;" align="center">
                     <input id="oh" style="display: none;">
                     <img src="https://wf.kelcu.ru/icons/document.png" width="128pt" align="center" id="image">
                     <h2 id="title">Перетащите сюда файл</h2>
-                    <p id="description">или выберете его здесь</p>
+                    <p id="description">или выберите его здесь</p>
                     <p id="msg"></p>
                     <br>
                     <input type="file" id="file" name="file" />
@@ -323,8 +335,8 @@
                     <h2 style="text-align: center;">Ваши файлы:</h2>
                 </div>
                 <!-- <div id="warn" style="height: auto !important;">
-                    <p style="text-align: center;">В случае поступлении жалобы от РКН ваш файл может быть удален!</p>
-                </div> -->
+                <p style="text-align: center;">В случае поступлении жалобы от РКН ваш файл может быть удален!</p>
+            </div> -->
                 <p style="color:#ffffff75; font-size: 10pt; text-align: center;"><a
                         style="color:#ffffffa7; font-size: 13pt;" href="https://kelcu.ru/">Сделано с ❤ от
                         Кела</a><br>WaterFiles > Uploader<br>v{version}</p>
