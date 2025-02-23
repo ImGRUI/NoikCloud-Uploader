@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import express.Express;
+import express.middleware.HttpProxy;
 import express.middleware.Middleware;
 import express.utils.MediaType;
 import express.utils.Status;
@@ -16,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.List;
 
 import static ru.kelcuprum.waterfiles.Objects.BAD_REQUEST;
 import static ru.kelcuprum.waterfiles.Objects.getErrorObject;
@@ -63,13 +65,23 @@ public class Uploader {
             }
         });
         server.all("/release", (req, res) -> res.json(release.toJSON()));
-        server.post("/upload", (req, res) -> {
+        if(config.getString("proxy", "").isEmpty()) server.post("/upload", (req, res) -> {
             if (req.getHeader("X-File-Name").isEmpty() || req.getBody() == null) {
                 res.setStatus(Status._400);
                 res.json(BAD_REQUEST);
             } else {
                 try {
-                    final byte[] bytes = req.getBody().readAllBytes();
+                    byte[] bytes = req.getBody().readAllBytes();
+                    try{
+                        MultipartParser parser = new MultipartParser();
+                        LOG.log(new String(bytes, StandardCharsets.UTF_8));
+                        List<MultipartParser.Part> parts = parser.parse(new ByteArrayInputStream(bytes), "boundary");
+                        for(MultipartParser.Part part : parts){
+                            bytes = part.getContent();
+                        }
+                    } catch (Exception ex){
+                        ex.printStackTrace();
+                    }
                     if (bytes.length > 104857600) {
                         res.setStatus(413);
                         JsonObject error = new JsonObject();
@@ -97,7 +109,7 @@ public class Uploader {
                     res.json(getErrorObject(e));
                 }
             }
-        });
+        }); else server.use(new HttpProxy("/upload", config.getString("proxy", "")));
 
         server.all("/", (req, res) -> {
             String name = req.getHost().contains("localhost") ? "WaterFiles > Uploader" : req.getHost();
