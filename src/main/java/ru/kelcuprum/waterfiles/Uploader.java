@@ -74,7 +74,6 @@ public class Uploader {
                     byte[] bytes = req.getBody().readAllBytes();
                     try{
                         MultipartParser parser = new MultipartParser();
-                        LOG.log(new String(bytes, StandardCharsets.UTF_8));
                         List<MultipartParser.Part> parts = parser.parse(new ByteArrayInputStream(bytes), "boundary");
                         for(MultipartParser.Part part : parts){
                             bytes = part.getContent();
