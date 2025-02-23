@@ -8,14 +8,15 @@
 
     <meta property="og:site_name" content="WaterFiles > Uploader v{version}" />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://wfu.kelcu.ru" />
-    <meta property="og:image" content="https://wf.kelcu.ru/icons/document.png" />
+    <meta property="og:url" content="https://noikcloud.xyz" />
+    <link rel="icon" type="image/png" href="https://noikcloud.xyz/qfLVg6j">
+    <meta property="og:image" content="https://noikcloud.xyz/An3ZlZw" />
     <meta property="og:image:type" content="image/png">
     <meta property="og:image:width" content="128">
     <meta property="og:image:height" content="128">
     <meta property="og:description"
-        content="Отечественный аналог kappa.lol и всех подобных продуктов западной прапоганды" />
-    <meta name="description" content="Отечественный аналог kappa.lol и всех подобных продуктов западной прапоганды" />
+        content="Noik Uploader" />
+    <meta name="description" content="Noik Uploader" />
     <meta name="theme-color" content="#323E4F">
     <meta name="twitter:site" content="@kel_cu">
 
@@ -59,11 +60,11 @@
         })
         const uploadFile = (file) => {
             if (file.size > 104857600) {
-                alert("Файл весит больше 100мб!")
+                alert("File is over 100mb!")
                 return;
             }
-            document.getElementById("title").innerText = "Пожалуйста подождите...";
-            document.getElementById("description").innerHTML = "Это может занять некоторое время!"
+            document.getElementById("title").innerText = "Uploading...";
+            document.getElementById("description").innerHTML = ""
             document.getElementById("msg")
                 .innerHTML = "";
             if (/[а-яА-Я`]/.test(file.name)) {
@@ -85,18 +86,18 @@
                 .then(response => response.json())
                 .then(suckass => {
                     if (suckass.error) {
-                        document.getElementById("title").innerText = "Произошла ошибка!";
+                        document.getElementById("title").innerText = "Error occurred";
                         document.getElementById("description").innerHTML = "[" + suckass.error.code + "/" + suckass.error.codename + "] " + suckass.error.message;
                     } else {
                         document.getElementById("oh").value = suckass.url;
-                        document.getElementById("title").innerText = "Файл загружен!";
-                        document.getElementById("description").innerHTML = "<a href=\"" + suckass.url + "\">" + suckass.url + "</a> <button onclick=\"onCopy()\">Скопировать</a>"
+                        document.getElementById("title").innerText = "Done";
+                        document.getElementById("description").innerHTML = "<a href=\"" + suckass.url + "\">" + suckass.url + "</a> <button onclick=\"onCopy()\">Copy</a>"
                         addToHistory(suckass.url)
                     }
                 })
                 .catch(error => {
-                    document.getElementById("title").innerText = "Произошла ошибка!";
-                    document.getElementById("description").innerHTML = "Возможно Роскомнадзор добрался до сюда"
+                    document.getElementById("title").innerText = "Error occurred";
+                    document.getElementById("description").innerHTML = "Network Error"
                     console.error(error); // Handle upload errors
                 });
         };
@@ -124,7 +125,7 @@
             a.href = url;
             a.innerText = url.split("/")[2] + "/" + url.split("/")[3];
             // a.innerText+=" ";
-            b.innerText = "Копировать";
+            b.innerText = "Copy";
             b.onclick = (s) => {
                 let heh = url;
                 document.getElementById("oh").value = heh;
@@ -319,27 +320,27 @@
                     <h2 style="text-align: center;">{hostname}</h2>
                 </div>
                 <div id="warn" style="height: auto !important;">
-                    <h3 style="text-align: center;">Данный сервис находится на стадии разработки и может иметь недочеты
+                    <h3 style="text-align: center;">This service is under construction
                     </h3>
                 </div>
                 <div id="content" style="height: auto !important;" align="center">
                     <input id="oh" style="display: none;">
-                    <img src="https://wf.kelcu.ru/icons/document.png" width="128pt" align="center" id="image">
-                    <h2 id="title">Перетащите сюда файл</h2>
-                    <p id="description">или выберите его здесь</p>
+                    <img src="https://noikcloud.xyz/An3ZlZw" width="128pt" align="center" id="image">
+                    <h2 id="title">Drag and Drop</h2>
+                    <p id="description">or choose here</p>
                     <p id="msg"></p>
                     <br>
                     <input type="file" id="file" name="file" />
                 </div>
                 <div id="history" style="height: auto !important; display: none;">
-                    <h2 style="text-align: center;">Ваши файлы:</h2>
+                    <h2 style="text-align: center;">Files:</h2>
                 </div>
                 <!-- <div id="warn" style="height: auto !important;">
                 <p style="text-align: center;">В случае поступлении жалобы от РКН ваш файл может быть удален!</p>
             </div> -->
                 <p style="color:#ffffff75; font-size: 10pt; text-align: center;"><a
-                        style="color:#ffffffa7; font-size: 13pt;" href="https://kelcu.ru/">Сделано с ❤ от
-                        Кела</a><br>WaterFiles > Uploader<br>v{version}</p>
+                        style="color:#ffffffa7; font-size: 13pt;" href="https://kelcu.ru/">Made with ❤ from
+                        Kel</a><br>WaterFiles > Uploader<br>v{version}</p>
             </div>
         </div>
     </div>

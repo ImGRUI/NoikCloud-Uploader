@@ -47,7 +47,7 @@ public class Uploader {
         checkFolders();
         server = new Express();
         server.use(Middleware.cors());
-        server.use((req, res) -> LOG.log(String.format("%s сделал запрос на %s", req.getIp(), req.getPath())));
+        server.use((req, res) -> LOG.log(String.format("%s made request to %s", req.getIp(), req.getPath())));
         // -=-=-=-=-
         server.all("/:id", (req, res) -> {
             String id = req.getParam("id").split("\\.")[0];
@@ -75,7 +75,7 @@ public class Uploader {
                         JsonObject error = new JsonObject();
                         error.addProperty("code", 413);
                         error.addProperty("codename", "Payload Too Large");
-                        error.addProperty("message", "Файл весит больше 100мб!");
+                        error.addProperty("message", "File is over 100mb!");
                         JsonObject resp = new JsonObject();
                         resp.add("error", error);
                         res.json(resp);
@@ -88,7 +88,7 @@ public class Uploader {
                         addFilename(id, fileName);
                         JsonObject resp = new JsonObject();
                         resp.addProperty("id", id);
-                        resp.addProperty("url", String.format("%1$s/%2$s", config.getString("url", "https://wfu.kelcu.ru"), id));
+                        resp.addProperty("url", String.format("%1$s/%2$s", config.getString("url", "https://noikcloud.xyz"), id));
                         res.json(resp);
                     }
                 } catch (Exception e) {
@@ -117,8 +117,8 @@ public class Uploader {
         server.all((req, res) -> res.send("File not found"));
         server.listen(config.getNumber("port", 1984).intValue());
         LOG.log("-=-=-=-=-=-=-=-=-=-=-=-=-");
-        LOG.log("Uploader запущен!");
-        LOG.log(String.format("Порт: %s", config.getNumber("port", 1984).intValue()));
+        LOG.log("Uploader started");
+        LOG.log(String.format("Port: %s", config.getNumber("port", 1984).intValue()));
         LOG.log("-=-=-=-=-=-=-=-=-=-=-=-=-");
     }
     public static void addFilename(String id, String name){
@@ -142,7 +142,7 @@ public class Uploader {
 
     public static String makeID(int length) {
         StringBuilder result = new StringBuilder();
-        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-";
         int charactersLength = characters.length();
         int counter = 0;
         while (counter < length) {
