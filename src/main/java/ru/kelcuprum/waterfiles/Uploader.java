@@ -15,7 +15,6 @@ import ru.kelcuprum.caffeinelib.utils.GsonHelper;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 
@@ -111,7 +110,7 @@ public class Uploader {
         }); else server.use(new HttpProxy("/upload", config.getString("proxy", "")));
 
         server.all("/", (req, res) -> {
-            String name = req.getHost().contains("localhost") ? "WaterFiles > Uploader" : req.getHost();
+            String name = req.getHost().contains("localhost") ? "NoikCloud > Uploader" : req.getHost();
             String page = html;
             File filePage = new File("./index.html");
             if(filePage.exists()){
@@ -178,7 +177,7 @@ public class Uploader {
         }
     }
 
-    public static CoffeeLogger LOG = new CoffeeLogger("WaterFiles/Uploader");
+    public static CoffeeLogger LOG = new CoffeeLogger("NoikCloud/Uploader");
 
     static long kilo = 1024;
     static long mega = kilo * kilo;
