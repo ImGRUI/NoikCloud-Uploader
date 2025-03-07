@@ -4,7 +4,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import express.Express;
-import express.middleware.HttpProxy;
 import express.middleware.Middleware;
 import express.utils.MediaType;
 import express.utils.Status;
@@ -64,7 +63,7 @@ public class Uploader {
             }
         });
         server.all("/release", (req, res) -> res.json(release.toJSON()));
-        if(config.getString("proxy", "").isEmpty()) server.post("/upload", (req, res) -> {
+        server.post("/upload", (req, res) -> {
             if (req.getHeader("X-File-Name").isEmpty() || req.getBody() == null) {
                 res.setStatus(Status._400);
                 res.json(BAD_REQUEST);
@@ -109,7 +108,7 @@ public class Uploader {
                     res.json(getErrorObject(e));
                 }
             }
-        }); else server.use(new HttpProxy("/upload", config.getString("proxy", "")));
+        });
 
         server.all("/", (req, res) -> {
             String name = req.getHost().contains("localhost") ? "NoikCloud > Uploader" : req.getHost();
