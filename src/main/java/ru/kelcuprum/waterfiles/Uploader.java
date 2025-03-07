@@ -94,8 +94,7 @@ public class Uploader {
                         String id = makeID(7);
                         File file = mainFolder.toPath().resolve(id + fileType).toFile();
                         saveFile(bytes, file);
-                        bytes = null;
-                        System.gc();
+                        bytes = null; System.gc();
                         addFilename(id, fileName);
                         JsonObject resp = new JsonObject();
                         resp.addProperty("id", id);
