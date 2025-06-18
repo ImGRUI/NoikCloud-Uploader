@@ -17,8 +17,7 @@ import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.List;
 
-import static ru.kelcuprum.waterfiles.Objects.BAD_REQUEST;
-import static ru.kelcuprum.waterfiles.Objects.getErrorObject;
+import static ru.kelcuprum.waterfiles.Objects.*;
 
 public class Uploader {
     public static Express server;
@@ -28,6 +27,7 @@ public class Uploader {
     public static String html = "";
     public static Config release = new Config(new JsonObject());
     public static HashMap<String, String> fileNames = new HashMap<>();
+    public static HashMap<String, String> fileDeletes = new HashMap<>();
 
     public static void main(String[] args) throws IOException {
         InputStream releaseFile = Uploader.class.getResourceAsStream("/index.html");
@@ -40,8 +40,11 @@ public class Uploader {
         }
         JsonArray h = links.getJsonArray("names", new JsonArray());
         links.load();
-        for(JsonElement element : h)
+        for(JsonElement element : h) {
             fileNames.put(((JsonObject) element).get("id").getAsString(), ((JsonObject) element).get("name").getAsString());
+            if (((JsonObject) element).has("delete"))
+            fileDeletes.put(((JsonObject) element).get("id").getAsString(), ((JsonObject) element).get("delete").getAsString());
+        }
         LOG.log("Hello, world!");
         mainFolder = new File(config.getString("folder", "./files"));
         checkFolders();
@@ -55,7 +58,8 @@ public class Uploader {
                 if (file.isFile()) {
                     String name = file.getName().split("\\.")[0];
                     if (name.equals(id)) {
-                        if(fileNames.containsKey(name)) res.setHeader("Content-Disposition", "filename=\""+fileNames.get(name)+"\"");
+                        if(fileNames.containsKey(name))
+                            res.setHeader("Content-Disposition", "filename=\""+fileNames.get(name)+"\"");
                         res.send(file.toPath());
                         break;
                     }
@@ -70,13 +74,13 @@ public class Uploader {
             } else {
                 try {
                     byte[] bytes = req.getBody().readAllBytes();
-                    try{
+                    try {
                         MultipartParser parser = new MultipartParser();
                         List<MultipartParser.Part> parts = parser.parse(new ByteArrayInputStream(bytes), "boundary");
-                        for(MultipartParser.Part part : parts){
+                        for (MultipartParser.Part part : parts) {
                             bytes = part.getContent();
                         }
-                    } catch (Exception ex){
+                    } catch (Exception ex) {
                         ex.printStackTrace();
                     }
                     if (bytes.length > 104857600) {
@@ -91,14 +95,17 @@ public class Uploader {
                     } else {
                         String fileName = req.getHeader("X-File-Name").getFirst();
                         String fileType = fileName.split("\\.").length <= 1 ? "" : "." + fileName.split("\\.")[fileName.split("\\.").length - 1];
-                        String id = makeID(7);
+                        String id = makeID(7, false);
+                        String delete_id = makeID(21, true);
                         File file = mainFolder.toPath().resolve(id + fileType).toFile();
                         saveFile(bytes, file);
-                        bytes = null; System.gc();
-                        addFilename(id, fileName);
+                        bytes = null;
+                        System.gc();
+                        addFilename(id, fileName, delete_id);
                         JsonObject resp = new JsonObject();
                         resp.addProperty("id", id);
                         resp.addProperty("url", String.format("%1$s/%2$s", config.getString("url", "https://noikcloud.xyz"), id));
+                        resp.addProperty("delete_url", String.format("%1$s/delete/%2$s", config.getString("url", "https://noikcloud.xyz"), delete_id));
                         res.json(resp);
                     }
                 } catch (Exception e) {
@@ -108,19 +115,44 @@ public class Uploader {
                 }
             }
         });
-
+        server.all("/delete/:id", (req, res) -> {
+            String id = req.getParam("id");
+            String idFile = "";
+            for (String name : fileDeletes.keySet()) {
+                if (fileDeletes.get(name).contains(id)) idFile = name;
+            }
+            if (fileDeletes.containsValue(id)) {
+                for (File file : mainFolder.listFiles()) {
+                    if (file.isFile()) {
+                        String name = file.getName().split("\\.")[0];
+                        if (name.equals(idFile)) {
+                            file.delete();
+                            fileNames.remove(idFile);
+                            fileDeletes.remove(idFile);
+                            res.send("File deleted");
+                            break;
+                        }
+                    }
+                }
+            } else {
+                res.setStatus(404);
+                res.json(NOT_FOUND);
+            }
+        });
         server.all("/", (req, res) -> {
-            String name = req.getHost().contains("localhost") ? "NoikCloud > Uploader" : req.getHost();
+            String name = config.getString("name", "{host}")
+                    .replace("{host}", req.getHost().contains("localhost") || req.getHost().contains("127.0.0.1") ? "NoikCloud > Uploader" : req.getHost());
             String page = html;
             File filePage = new File("./index.html");
-            if(filePage.exists()){
+            if (filePage.exists()) {
                 try {
                     page = Files.readString(filePage.toPath());
-                } catch (Exception ignored){
+                } catch (Exception ignored) {
                     ignored.printStackTrace();
                 }
             }
-            String resHtml = page.replace("{hostname}", name).replace("{version}", release.getString("version", "1.98.4"));
+            String resHtml = page.replace("{hostname}", name)
+                    .replace("{accent_color}", config.getString("accent_color", "#bf6a6a"));
             res.setContentType(MediaType._html);
             res.send(resHtml);
         });
@@ -131,26 +163,30 @@ public class Uploader {
         LOG.log(String.format("Port: %s", config.getNumber("port", 1984).intValue()));
         LOG.log("-=-=-=-=-=-=-=-=-=-=-=-=-");
     }
-    public static void addFilename(String id, String name){
+    public static void addFilename(String id, String name, String delete_id) {
         fileNames.put(id, name);
+        fileDeletes.put(id, delete_id);
         saveFilenames();
     }
-    public static void saveFilenames(){
+    public static void saveFilenames() {
         JsonArray j = new JsonArray();
-        for(String key : fileNames.keySet()){
+        for (String key : fileNames.keySet()) {
             JsonObject jj = new JsonObject();
             jj.addProperty("id", key);
             jj.addProperty("name", fileNames.get(key));
+            if (fileDeletes.containsKey(key))
+                jj.addProperty("delete", fileDeletes.get(key));
             j.add(jj);
         }
         links.setJsonArray("names", j);
         links.save();
     }
+
     public static void saveFile(byte[] is, File targetFile) throws IOException {
         Files.write(targetFile.toPath(), is);
     }
 
-    public static String makeID(int length) {
+    public static String makeID(int length, boolean isDelete) {
         StringBuilder result = new StringBuilder();
         String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-";
         int charactersLength = characters.length();
@@ -159,15 +195,18 @@ public class Uploader {
             result.append(characters.charAt((int) Math.floor(Math.random() * charactersLength)));
             counter += 1;
         }
-        return isIDCorrect(result.toString()) ? result.toString() : makeID(length);
+        return isIDCorrect(result.toString(), isDelete) ? result.toString() : makeID(length, isDelete);
     }
 
-    public static boolean isIDCorrect(String id) {
-        for (File file : mainFolder.listFiles())
-            if (file.isFile())
-                if (file.getName().split("\\.")[0].equals(id)) return false;
+    public static boolean isIDCorrect(String id, boolean isDelete) {
+        if (!isDelete) {
+            for (File file : mainFolder.listFiles())
+                if (file.isFile())
+                    if (file.getName().split("\\.")[0].equals(id)) return false;
+        } else return !fileDeletes.containsKey(id);
         return true;
     }
+
 
     public static void checkFolders() throws IOException {
         try {
