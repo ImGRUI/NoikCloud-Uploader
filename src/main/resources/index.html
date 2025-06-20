@@ -2,6 +2,9 @@
 <html ondrop="console.log(event)">
 
 <head>
+    <link rel="preload" href="https://noikcloud.xyz/EtScx0s" as="image">
+    <link rel="preload" href="https://noikcloud.xyz/E2bwKAe" as="image">
+    <link rel="preload" href="https://noikcloud.xyz/CEzBpHb" as="image">
     <meta charset="UTF-8">
     <title>NoikCloud > Uploader</title>
     <meta name="darkreader-lock">
@@ -27,6 +30,9 @@
             e.preventDefault();
             e.stopPropagation();
         }
+        const defaultImage = 'https://noikcloud.xyz/EtScx0s';
+        const uploadingImage = 'https://noikcloud.xyz/E2bwKAe';
+        const errorImage = 'https://noikcloud.xyz/CEzBpHb';
         document.addEventListener("DOMContentLoaded", function (event) {
             loadHistory()
             fileInput = document.getElementById("file");
@@ -62,6 +68,7 @@
                 alert("File is over 100mb!")
                 return;
             }
+            document.getElementById("image").src = uploadingImage;
             document.getElementById("title").innerText = "Uploading...";
             document.getElementById("description").innerHTML = ""
             document.getElementById("msg")
@@ -87,17 +94,20 @@
                     if (suckass.error) {
                         document.getElementById("title").innerText = "Error occurred";
                         document.getElementById("description").innerHTML = "[" + suckass.error.code + "/" + suckass.error.codename + "] " + suckass.error.message;
+                        document.getElementById("image").src = errorImage;
                     } else {
                         document.getElementById("oh").value = suckass.url;
                         document.getElementById("title").innerText = "Done";
                         document.getElementById("description").innerHTML = "<a href=\"" + suckass.url + "\">" + suckass.url + "</a> <button onclick=\"onCopy()\">Copy</a>"
                         addToHistory(suckass.url)
+                        document.getElementById("image").src = defaultImage;
                     }
                 })
                 .catch(error => {
                     document.getElementById("title").innerText = "Error occurred";
                     document.getElementById("description").innerHTML = "Network Error"
                     console.error(error); // Handle upload errors
+                    document.getElementById("image").src = errorImage;
                 });
         };
         let history = [];
