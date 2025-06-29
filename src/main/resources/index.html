@@ -34,7 +34,7 @@
         const uploadingImage = 'https://noikcloud.xyz/E2bwKAe';
         const errorImage = 'https://noikcloud.xyz/CEzBpHb';
         document.addEventListener("DOMContentLoaded", function (event) {
-            loadHistory()
+            loadHistory();
             fileInput = document.getElementById("file");
             fileInput.addEventListener("change", (s) => {
                 if (s.target.files.length >= 1) {
@@ -116,16 +116,21 @@
                 localStorage.setItem("history", "[]");
             }
             history = JSON.parse(localStorage.getItem("history"));
+            if (history.length > 0 && localStorage.getItem("history_converted") === null) {
+                history = history.reverse();
+                localStorage.setItem("history", JSON.stringify(history));
+                localStorage.setItem("history_converted", "1");
+            }
             for (i = 0; i < history.length; i++) {
                 addHistoryElement(history[i])
             }
         }
         function addToHistory(url) {
-            history.push(url);
-            addHistoryElement(url)
+            history.unshift(url);
+            addHistoryElement(url, true)
             localStorage.setItem("history", JSON.stringify(history))
         }
-        function addHistoryElement(url) {
+        function addHistoryElement(url, prepend = false) {
             let div = document.getElementById("history");
             if (div.style.display == "none") div.style.display = "";
             let p = document.createElement("p")
@@ -133,7 +138,6 @@
             let b = document.createElement("button")
             a.href = url;
             a.innerText = url.split("/")[2] + "/" + url.split("/")[3];
-            // a.innerText+=" ";
             b.innerText = "Copy";
             b.onclick = (s) => {
                 let heh = url;
@@ -143,7 +147,11 @@
             b.style = "margin-left: 10pt;"
             p.appendChild(a);
             p.appendChild(b);
-            div.appendChild(p);
+            if (prepend && div.children.length > 1) {
+                div.insertBefore(p, div.children[1]);
+            } else {
+                div.appendChild(p);
+            }
         }
         async function onCopy() {
             let copyGfGText =
