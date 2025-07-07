@@ -104,8 +104,8 @@ public class Uploader {
                         addFilename(id, fileName, delete_id);
                         JsonObject resp = new JsonObject();
                         resp.addProperty("id", id);
-                        resp.addProperty("url", String.format("%1$s/%2$s", config.getString("url", "http://localhost:1984"), id));
-                        resp.addProperty("delete_url", String.format("%1$s/delete/%2$s", config.getString("url", "http://localhost:1984"), delete_id));
+                        resp.addProperty("url", String.format("%1$s/%2$s", config.getString("url", "https://noikcloud.xyz"), id));
+                        resp.addProperty("delete_url", String.format("%1$s/delete/%2$s", config.getString("url", "https://noikcloud.xyz"), delete_id));
                         res.json(resp);
                     }
                 } catch (Exception e) {

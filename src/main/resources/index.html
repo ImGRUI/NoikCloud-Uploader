@@ -151,7 +151,7 @@
             let b = document.createElement("button")
             let url = data.url;
             a.href = url;
-            a.innerText = data.url;
+            a.innerText = data.url.split("/")[2] + "/" + data.url.split("/")[3];;
             b.innerText = "Copy";
             b.onclick = (s) => {
                 let heh = url;
