@@ -20,7 +20,6 @@
         content="Noik Uploader" />
     <meta name="description" content="Noik Uploader" />
     <meta name="theme-color" content="#bf6a6a">
-    <meta name="twitter:site" content="@kel_cu">
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
@@ -99,7 +98,8 @@
                         document.getElementById("oh").value = suckass.url;
                         document.getElementById("title").innerText = "Done";
                         document.getElementById("description").innerHTML = "<a href=\"" + suckass.url + "\">" + suckass.url + "</a> <button onclick=\"onCopy()\">Copy</a>"
-                        addToHistory(suckass.url)
+                        suckass.type = file.type;
+                        addToHistory(suckass)
                         document.getElementById("image").src = defaultImage;
                     }
                 })
@@ -112,32 +112,46 @@
         };
         let history = [];
         function loadHistory() {
+            document.getElementById("files").innerHTML = "";
             if (localStorage.getItem("history") == null) {
                 localStorage.setItem("history", "[]");
             }
             history = JSON.parse(localStorage.getItem("history"));
-            if (history.length > 0 && localStorage.getItem("history_converted") === null) {
-                history = history.reverse();
-                localStorage.setItem("history", JSON.stringify(history));
-                localStorage.setItem("history_converted", "1");
+            if (localStorage.getItem("history_converted") === null) {
+               if (history.length > 0) {
+                    history = history.reverse();
+                    localStorage.setItem("history", JSON.stringify(history));
+               }
+               localStorage.setItem("history_converted", "1");
             }
             for (i = 0; i < history.length; i++) {
-                addHistoryElement(history[i])
+                if (history[i].type) addHistoryElement(history[i], i)
+                else {
+                    let newData = {
+                        "url": history[i],
+                        "type": "file",
+                        "delete_url": ""
+                    }
+                    addHistoryElement(newData, i)
+                }
             }
         }
         function addToHistory(url) {
             history.unshift(url);
-            addHistoryElement(url, true)
+            // addHistoryElement(url, true)
             localStorage.setItem("history", JSON.stringify(history))
+            loadHistory();
         }
-        function addHistoryElement(url, prepend = false) {
-            let div = document.getElementById("history");
-            if (div.style.display == "none") div.style.display = "";
+        function addHistoryElement(data, id) {
+            let div = document.getElementById("files");
+            let divHistory = document.getElementById("history");
+            if (divHistory.style.display == "none") divHistory.style.display = "";
             let p = document.createElement("p")
             let a = document.createElement("a")
             let b = document.createElement("button")
+            let url = data.url;
             a.href = url;
-            a.innerText = url.split("/")[2] + "/" + url.split("/")[3];
+            a.innerText = data.url;
             b.innerText = "Copy";
             b.onclick = (s) => {
                 let heh = url;
@@ -147,11 +161,36 @@
             b.style = "margin-left: 10pt;"
             p.appendChild(a);
             p.appendChild(b);
-            if (prepend && div.children.length > 1) {
-                div.insertBefore(p, div.children[1]);
-            } else {
-                div.appendChild(p);
+            if(data.delete_url.length != 0){
+                let bd = document.createElement("button")
+                bd.style = "margin-left: 5pt"
+                bd.innerText = "Delete";
+                bd.className = "delete"
+                bd.onclick = async (s) => {
+                    let heh = data.delete_url;
+                    let url = await fetch(heh);
+                    let status = await url.status;
+                    if (status == 200) {
+                        let history = JSON.parse(localStorage.getItem("history"));
+                        let newHistory = [];
+                        for (i = 0; i < history.length; i++) {
+                            if (i != id) newHistory.push(history[i]);
+                        }
+                        localStorage.setItem("history", JSON.stringify(newHistory))
+                        alert("File Deleted")
+                        loadHistory();
+                    } else {
+                        alert("Delete Failed!")
+                    }
+                }
+                p.appendChild(bd);
             }
+            // if (prepend && div.children.length > 1) {
+            //     div.insertBefore(p, div.children[1]);
+            // } else {
+            //     div.appendChild(p);
+            // }
+            div.appendChild(p);
         }
         async function onCopy() {
             let copyGfGText =
@@ -291,6 +330,10 @@
             color: #fff;
         }
 
+        button[class=delete] {
+            background-color: {delete_color};
+        }
+
         input[type=file],
         input[type=file] button {
             font-size: 10pt;
@@ -347,6 +390,7 @@
                 </div>
                 <div id="history" style="height: auto !important; display: none;">
                     <h2 style="text-align: center;">Files:</h2>
+                    <div id="files"></div>
                 </div>
                 <p style="color:#ffffff75; font-size: 10pt; text-align: center;"><a
                         style="color:#ffffffa7; font-size: 13pt;" href="https://noikcloud.xyz/tos">Terms of Service

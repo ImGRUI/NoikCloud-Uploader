@@ -104,8 +104,8 @@ public class Uploader {
                         addFilename(id, fileName, delete_id);
                         JsonObject resp = new JsonObject();
                         resp.addProperty("id", id);
-                        resp.addProperty("url", String.format("%1$s/%2$s", config.getString("url", "https://noikcloud.xyz"), id));
-                        resp.addProperty("delete_url", String.format("%1$s/delete/%2$s", config.getString("url", "https://noikcloud.xyz"), delete_id));
+                        resp.addProperty("url", String.format("%1$s/%2$s", config.getString("url", "http://localhost:1984"), id));
+                        resp.addProperty("delete_url", String.format("%1$s/delete/%2$s", config.getString("url", "http://localhost:1984"), delete_id));
                         res.json(resp);
                     }
                 } catch (Exception e) {
@@ -152,11 +152,15 @@ public class Uploader {
                 }
             }
             String resHtml = page.replace("{hostname}", name)
-                    .replace("{accent_color}", config.getString("accent_color", "#bf6a6a"));
+                    .replace("{accent_color}", config.getString("accent_color", "#bf6a6a"))
+                    .replace("{delete_color}", config.getString("delete_color", "#652c2d"));
             res.setContentType(MediaType._html);
             res.send(resHtml);
         });
-        server.all((req, res) -> res.send("File not found"));
+        server.all((req, res) -> {
+            res.setStatus(404);
+            res.send("File not found");
+        });
         server.listen(config.getNumber("port", 1984).intValue());
         LOG.log("-=-=-=-=-=-=-=-=-=-=-=-=-");
         LOG.log("Uploader started");
