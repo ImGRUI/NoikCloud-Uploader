@@ -28,7 +28,6 @@ public class Uploader {
     public static Config release = new Config(new JsonObject());
     public static HashMap<String, String> fileNames = new HashMap<>();
     public static HashMap<String, String> fileDeletes = new HashMap<>();
-    public static HashMap<String, String> fileTypes = new HashMap<>();
 
     public static void main(String[] args) throws IOException {
         InputStream releaseFile = Uploader.class.getResourceAsStream("/index.html");
@@ -43,10 +42,8 @@ public class Uploader {
         links.load();
         for(JsonElement element : h) {
             fileNames.put(((JsonObject) element).get("id").getAsString(), ((JsonObject) element).get("name").getAsString());
-            if (((JsonObject) element).has("delete") && !((JsonObject) element).get("delete").isJsonNull())
-                fileDeletes.put(((JsonObject) element).get("id").getAsString(), ((JsonObject) element).get("delete").getAsString());
-            if (((JsonObject) element).has("type") && !((JsonObject) element).get("type").isJsonNull())
-                fileTypes.put(((JsonObject) element).get("id").getAsString(), ((JsonObject) element).get("type").getAsString());
+            if (((JsonObject) element).has("delete"))
+            fileDeletes.put(((JsonObject) element).get("id").getAsString(), ((JsonObject) element).get("delete").getAsString());
         }
         LOG.log("Hello, world!");
         mainFolder = new File(config.getString("folder", "./files"));
@@ -63,15 +60,7 @@ public class Uploader {
                     if (name.equals(id)) {
                         if(fileNames.containsKey(name))
                             res.setHeader("Content-Disposition", "filename=\""+fileNames.get(name)+"\"");
-                        if (fileTypes.containsKey(name)) {
-                            res.setHeader("Content-Type", fileTypes.get(name));
-                            if(fileTypes.get(name).startsWith("video") || fileTypes.get(name).startsWith("audio")){
-                                res.setHeader("accept-ranges", "bytes");
-                                if(!req.getHeader("range").isEmpty()) res.setHeader("content-range", "bytes "+req.getHeader("range").getFirst()+file.length()+"/"+(file.length()+1));
-                            }
-                        }
                         res.send(file.toPath());
-                        System.gc();
                         break;
                     }
                 }
@@ -106,17 +95,15 @@ public class Uploader {
                     } else {
                         String fileName = req.getHeader("X-File-Name").getFirst();
                         String fileType = fileName.split("\\.").length <= 1 ? "" : "." + fileName.split("\\.")[fileName.split("\\.").length - 1];
-                        String fileTypeMedia = req.getHeader("Content-Type").getFirst();
                         String id = makeID(7, false);
                         String delete_id = makeID(21, true);
                         File file = mainFolder.toPath().resolve(id + fileType).toFile();
                         saveFile(bytes, file);
                         bytes = null;
                         System.gc();
-                        addFilename(id, fileName, delete_id, fileTypeMedia);
+                        addFilename(id, fileName, delete_id);
                         JsonObject resp = new JsonObject();
                         resp.addProperty("id", id);
-                        resp.addProperty("type", fileTypeMedia);
                         resp.addProperty("url", String.format("%1$s/%2$s", config.getString("url", "https://noikcloud.xyz"), id));
                         resp.addProperty("delete_url", String.format("%1$s/delete/%2$s", config.getString("url", "https://noikcloud.xyz"), delete_id));
                         res.json(resp);
@@ -180,10 +167,9 @@ public class Uploader {
         LOG.log(String.format("Port: %s", config.getNumber("port", 1984).intValue()));
         LOG.log("-=-=-=-=-=-=-=-=-=-=-=-=-");
     }
-    public static void addFilename(String id, String name, String delete_id, String file_type_media) {
+    public static void addFilename(String id, String name, String delete_id) {
         fileNames.put(id, name);
         fileDeletes.put(id, delete_id);
-        fileTypes.put(id, file_type_media);
         saveFilenames();
     }
     public static void saveFilenames() {
@@ -192,7 +178,6 @@ public class Uploader {
             JsonObject jj = new JsonObject();
             jj.addProperty("id", key);
             jj.addProperty("name", fileNames.get(key));
-            jj.addProperty("type", fileTypes.get(key));
             if (fileDeletes.containsKey(key))
                 jj.addProperty("delete", fileDeletes.get(key));
             j.add(jj);
