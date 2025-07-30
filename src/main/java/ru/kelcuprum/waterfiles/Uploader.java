@@ -17,6 +17,7 @@ import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.List;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static ru.kelcuprum.waterfiles.Objects.*;
 
 public class Uploader {
@@ -68,6 +69,13 @@ public class Uploader {
                             if(fileTypes.get(name).startsWith("video") || fileTypes.get(name).startsWith("audio")){
                                 res.setHeader("accept-ranges", "bytes");
                                 if(!req.getHeader("range").isEmpty()) res.setHeader("content-range", "bytes "+req.getHeader("range").getFirst()+file.length()+"/"+(file.length()+1));
+                            } else if (fileTypes.get(name).startsWith("text")) {
+                                try {
+                                    res.sendBytes(Files.readString(file.toPath(), UTF_8).getBytes(), MediaType._txt.getMIME());
+                                } catch (Exception EX) {
+                                    EX.printStackTrace();
+                                }
+                                return;
                             }
                         }
                         res.send(file.toPath());

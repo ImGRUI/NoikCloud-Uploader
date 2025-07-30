@@ -125,7 +125,7 @@
                localStorage.setItem("history_converted", "1");
             }
             for (i = 0; i < history.length; i++) {
-                if (history[i].type) addHistoryElement(history[i], i)
+                if (history[i].id) addHistoryElement(history[i], i)
                 else {
                     let newData = {
                         "url": history[i],
@@ -151,7 +151,7 @@
             let b = document.createElement("button")
             let url = data.url;
             a.href = url;
-            a.innerText = data.url.split("/")[2] + "/" + data.url.split("/")[3];;
+            a.innerText = data.url.split("/")[2] + "/" + data.url.split("/")[3];
             b.innerText = "Copy";
             b.onclick = (s) => {
                 let heh = url;
