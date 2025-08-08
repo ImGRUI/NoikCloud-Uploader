@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.List;
+import java.security.SecureRandom;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static ru.kelcuprum.waterfiles.Objects.*;
@@ -30,6 +31,7 @@ public class Uploader {
     public static HashMap<String, String> fileNames = new HashMap<>();
     public static HashMap<String, String> fileDeletes = new HashMap<>();
     public static HashMap<String, String> fileTypes = new HashMap<>();
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     public static void main(String[] args) throws IOException {
         InputStream releaseFile = Uploader.class.getResourceAsStream("/index.html");
@@ -219,7 +221,7 @@ public class Uploader {
         int charactersLength = characters.length();
         int counter = 0;
         while (counter < length) {
-            result.append(characters.charAt((int) Math.floor(Math.random() * charactersLength)));
+            result.append(characters.charAt(SECURE_RANDOM.nextInt(charactersLength)));
             counter += 1;
         }
         return isIDCorrect(result.toString(), isDelete) ? result.toString() : makeID(length, isDelete);
