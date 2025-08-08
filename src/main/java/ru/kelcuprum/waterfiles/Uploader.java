@@ -92,6 +92,17 @@ public class Uploader {
                 res.json(BAD_REQUEST);
             } else {
                 try {
+                    if (req.getContentLength() > 104857600) {
+                        res.setStatus(413);
+                        JsonObject error = new JsonObject();
+                        error.addProperty("code", 413);
+                        error.addProperty("codename", "Payload Too Large");
+                        error.addProperty("message", "File is over 100mb!");
+                        JsonObject resp = new JsonObject();
+                        resp.add("error", error);
+                        res.json(resp);
+                        return;
+                    }
                     byte[] bytes = req.getBody().readAllBytes();
                     try {
                         MultipartParser parser = new MultipartParser();
@@ -102,33 +113,22 @@ public class Uploader {
                     } catch (Exception ex) {
                         ex.printStackTrace();
                     }
-                    if (bytes.length > 104857600) {
-                        res.setStatus(413);
-                        JsonObject error = new JsonObject();
-                        error.addProperty("code", 413);
-                        error.addProperty("codename", "Payload Too Large");
-                        error.addProperty("message", "File is over 100mb!");
-                        JsonObject resp = new JsonObject();
-                        resp.add("error", error);
-                        res.json(resp);
-                    } else {
-                        String fileName = req.getHeader("X-File-Name").getFirst();
-                        String fileType = fileName.split("\\.").length <= 1 ? "" : "." + fileName.split("\\.")[fileName.split("\\.").length - 1];
-                        String fileTypeMedia = req.getHeader("Content-Type").getFirst();
-                        String id = makeID(7, false);
-                        String delete_id = makeID(21, true);
-                        File file = mainFolder.toPath().resolve(id + fileType).toFile();
-                        saveFile(bytes, file);
-                        bytes = null;
-                        System.gc();
-                        addFilename(id, fileName, delete_id, fileTypeMedia);
-                        JsonObject resp = new JsonObject();
-                        resp.addProperty("id", id);
-                        resp.addProperty("type", fileTypeMedia);
-                        resp.addProperty("url", String.format("%1$s/%2$s", config.getString("url", "https://noikcloud.xyz"), id));
-                        resp.addProperty("delete_url", String.format("%1$s/delete/%2$s", config.getString("url", "https://noikcloud.xyz"), delete_id));
-                        res.json(resp);
-                    }
+                    String fileName = req.getHeader("X-File-Name").getFirst();
+                    String fileType = fileName.split("\\.").length <= 1 ? "" : "." + fileName.split("\\.")[fileName.split("\\.").length - 1];
+                    String fileTypeMedia = req.getHeader("Content-Type").getFirst();
+                    String id = makeID(7, false);
+                    String delete_id = makeID(21, true);
+                    File file = mainFolder.toPath().resolve(id + fileType).toFile();
+                    saveFile(bytes, file);
+                    bytes = null;
+                    System.gc();
+                    addFilename(id, fileName, delete_id, fileTypeMedia);
+                    JsonObject resp = new JsonObject();
+                    resp.addProperty("id", id);
+                    resp.addProperty("type", fileTypeMedia);
+                    resp.addProperty("url", String.format("%1$s/%2$s", config.getString("url", "https://noikcloud.xyz"), id));
+                    resp.addProperty("delete_url", String.format("%1$s/delete/%2$s", config.getString("url", "https://noikcloud.xyz"), delete_id));
+                    res.json(resp);
                 } catch (Exception e) {
                     e.printStackTrace();
                     res.setStatus(500);
