@@ -238,31 +238,8 @@ public class Uploader {
 
 
     public static void checkFolders() throws IOException {
-        try {
-            if (!mainFolder.exists()) Files.createDirectory(mainFolder.toPath());
-        } catch (Exception ignored) {
-            throw ignored;
-        }
+        if (!mainFolder.exists()) Files.createDirectory(mainFolder.toPath());
     }
 
     public static CoffeeLogger LOG = new CoffeeLogger("NoikCloud/Uploader");
-
-    static long kilo = 1024;
-    static long mega = kilo * kilo;
-    static long giga = mega * kilo;
-    static long tera = giga * kilo;
-
-    public static String getParsedFileSize(long size) {
-        String s;
-        double kb = (double) size / kilo;
-        double mb = kb / kilo;
-        double gb = mb / kilo;
-        double tb = gb / kilo;
-        if (size < kilo) s = size + " Bytes";
-        else if (size < mega) s = String.format("%.2f", kb) + " KB";
-        else if (size < giga) s = String.format("%.2f", mb) + " MB";
-        else if (size < tera) s = String.format("%.2f", gb) + " GB";
-        else s = String.format("%.2f", tb) + " TB";
-        return s;
-    }
 }
