@@ -7,9 +7,14 @@ import express.Express;
 import express.middleware.Middleware;
 import express.utils.MediaType;
 import express.utils.Status;
+import org.apache.commons.fileupload.FileItem;
+import org.apache.commons.fileupload.FileUploadBase;
+import org.apache.commons.fileupload.RequestContext;
+import org.apache.commons.fileupload.disk.DiskFileItemFactory;
+import org.apache.commons.fileupload.servlet.ServletFileUpload;
+import org.apache.commons.io.FilenameUtils;
 import ru.kelcuprum.caffeinelib.CoffeeLogger;
 import ru.kelcuprum.caffeinelib.config.Config;
-import ru.kelcuprum.caffeinelib.utils.GsonHelper;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -18,7 +23,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.security.SecureRandom;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static ru.kelcuprum.waterfiles.Objects.*;
 
 public class Uploader {
@@ -26,21 +30,19 @@ public class Uploader {
     public static Config config = new Config("./config.json");
     public static Config links = new Config("./files.json");
     public static File mainFolder = new File("./files");
+    public static String folder = "./files";
     public static String html = "";
-    public static Config release = new Config(new JsonObject());
     public static HashMap<String, String> fileNames = new HashMap<>();
     public static HashMap<String, String> fileDeletes = new HashMap<>();
     public static HashMap<String, String> fileTypes = new HashMap<>();
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    public static final int Threshold = 1024 * 1024 * 10;
+    public static final int MaxFileSize = 1024 * 1024 * 250;
+    public static final int MaxRequestSize = 1024 * 1024 * 260;
 
     public static void main(String[] args) throws IOException {
-        InputStream releaseFile = Uploader.class.getResourceAsStream("/index.html");
-        if (releaseFile != null) html = new String(releaseFile.readAllBytes(), StandardCharsets.UTF_8);
-        try {
-            InputStream kek = Uploader.class.getResourceAsStream("/release.json");
-            release = new Config(GsonHelper.parseObject(new String(kek.readAllBytes(), StandardCharsets.UTF_8)));
-        } catch (IOException e) {
-            LOG.debug(e.getMessage());
+        try (InputStream releaseFile = Uploader.class.getResourceAsStream("/index.html")) {
+            if (releaseFile != null) html = new String(releaseFile.readAllBytes(), StandardCharsets.UTF_8);
         }
         JsonArray h = links.getJsonArray("names", new JsonArray());
         links.load();
@@ -71,71 +73,101 @@ public class Uploader {
                             if(fileTypes.get(name).startsWith("video") || fileTypes.get(name).startsWith("audio")){
                                 res.setHeader("accept-ranges", "bytes");
                                 if(!req.getHeader("range").isEmpty()) res.setHeader("content-range", "bytes "+req.getHeader("range").getFirst()+file.length()+"/"+(file.length()+1));
-                            } else if (fileTypes.get(name).startsWith("text")) {
-                                try {
-                                    res.sendBytes(Files.readString(file.toPath(), UTF_8).getBytes(), MediaType._txt.getMIME());
-                                } catch (Exception EX) {
-                                    EX.printStackTrace();
-                                }
-                                return;
                             }
                         }
                         res.send(file.toPath());
-                        System.gc();
                         break;
                     }
                 }
             }
         });
-        server.all("/release", (req, res) -> res.json(release.toJSON()));
         server.post("/upload", (req, res) -> {
-            if (req.getHeader("X-File-Name").isEmpty() || req.getBody() == null) {
+            if (!req.getHeader("X-File-Name").isEmpty()) {
+                JsonObject resp = new JsonObject();
+                resp.addProperty("url", "X-File-Name is deprecated");
+                resp.addProperty("delete_url", "Please remove X-File-Name header");
+                res.json(resp);
+                return;
+            }
+            RequestContext request = new RequestContext() {
+                public String getContentType() {
+                    return req.getContentType();
+                }
+
+                public int getContentLength() {
+                    return (int) req.getContentLength();
+                }
+
+                public String getCharacterEncoding() {
+                    if (req.getContentType() != null && req.getContentType().contains("charset=")) {
+                        return req.getContentType().split("charset=")[1].split(";")[0].trim();
+                    } else {
+                        return null;
+                    }
+                }
+
+                public InputStream getInputStream() {
+                    return req.getBody();
+                }
+            };
+            if (!ServletFileUpload.isMultipartContent(request)) {
                 res.setStatus(Status._400);
                 res.json(BAD_REQUEST);
-            } else {
-                try {
-                    if (req.getContentLength() > 104857600) {
-                        res.setStatus(413);
-                        JsonObject error = new JsonObject();
-                        error.addProperty("code", 413);
-                        error.addProperty("codename", "Payload Too Large");
-                        error.addProperty("message", "File is over 100mb!");
-                        JsonObject resp = new JsonObject();
-                        resp.add("error", error);
-                        res.json(resp);
-                        return;
-                    }
-                    byte[] bytes = req.getBody().readAllBytes();
-                    try {
-                        MultipartParser parser = new MultipartParser();
-                        List<MultipartParser.Part> parts = parser.parse(new ByteArrayInputStream(bytes), "boundary");
-                        for (MultipartParser.Part part : parts) {
-                            bytes = part.getContent();
+                return;
+            }
+            DiskFileItemFactory factory = new DiskFileItemFactory();
+            factory.setSizeThreshold(Threshold);
+            factory.setRepository(new File(System.getProperty("java.io.tmpdir")));
+            ServletFileUpload upload = new ServletFileUpload(factory);
+            upload.setFileSizeMax(MaxFileSize);
+            upload.setSizeMax(MaxRequestSize);
+            try {
+                List<FileItem> formItems = upload.parseRequest(request);
+                if (formItems == null) {
+                    res.setStatus(Status._400);
+                    res.json(BAD_REQUEST);
+                } else {
+                    for (FileItem item : formItems) {
+                        if (!item.isFormField()) {
+                            try {
+                                String fileName = new File(item.getName()).getName();
+                                String extension = FilenameUtils.getExtension(fileName);
+                                String fileType = extension.isEmpty() ? "" : "." + extension;
+                                String fileTypeMedia = item.getContentType();
+                                String id = makeID(7, false);
+                                String delete_id = makeID(21, true);
+                                File storeFile = new File(folder, id + fileType);
+                                item.write(storeFile);
+                                addFilename(id, fileName, delete_id, fileTypeMedia);
+                                JsonObject resp = new JsonObject();
+                                resp.addProperty("id", id);
+                                resp.addProperty("type", fileTypeMedia);
+                                resp.addProperty("url", String.format("%1$s/%2$s", config.getString("url", "https://noikcloud.xyz"), id));
+                                resp.addProperty("delete_url", String.format("%1$s/delete/%2$s", config.getString("url", "https://noikcloud.xyz"), delete_id));
+                                res.json(resp);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                                res.setStatus(500);
+                                res.json(getErrorObject(e));
+                            } finally {
+                                item.delete();
+                            }
                         }
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
                     }
-                    String fileName = req.getHeader("X-File-Name").getFirst();
-                    String fileType = fileName.split("\\.").length <= 1 ? "" : "." + fileName.split("\\.")[fileName.split("\\.").length - 1];
-                    String fileTypeMedia = req.getHeader("Content-Type").getFirst();
-                    String id = makeID(7, false);
-                    String delete_id = makeID(21, true);
-                    File file = mainFolder.toPath().resolve(id + fileType).toFile();
-                    saveFile(bytes, file);
-                    bytes = null;
-                    System.gc();
-                    addFilename(id, fileName, delete_id, fileTypeMedia);
-                    JsonObject resp = new JsonObject();
-                    resp.addProperty("id", id);
-                    resp.addProperty("type", fileTypeMedia);
-                    resp.addProperty("url", String.format("%1$s/%2$s", config.getString("url", "https://noikcloud.xyz"), id));
-                    resp.addProperty("delete_url", String.format("%1$s/delete/%2$s", config.getString("url", "https://noikcloud.xyz"), delete_id));
-                    res.json(resp);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    res.setStatus(500);
-                    res.json(getErrorObject(e));
                 }
+            } catch (FileUploadBase.SizeLimitExceededException e) {
+                res.setStatus(413);
+                JsonObject error = new JsonObject();
+                error.addProperty("code", 413);
+                error.addProperty("codename", "Payload Too Large");
+                error.addProperty("message", "File is over 100mb!");
+                JsonObject resp = new JsonObject();
+                resp.add("error", error);
+                res.json(resp);
+            } catch (Exception e) {
+                e.printStackTrace();
+                res.setStatus(500);
+                res.json(getErrorObject(e));
             }
         });
         server.all("/delete/:id", (req, res) -> {
@@ -209,10 +241,6 @@ public class Uploader {
         }
         links.setJsonArray("names", j);
         links.save();
-    }
-
-    public static void saveFile(byte[] is, File targetFile) throws IOException {
-        Files.write(targetFile.toPath(), is);
     }
 
     public static String makeID(int length, boolean isDelete) {

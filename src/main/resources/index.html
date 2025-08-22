@@ -63,8 +63,8 @@
             });
         })
         const uploadFile = (file) => {
-            if (file.size > 104857600) {
-                alert("File is over 100mb!")
+            if (file.size > 1024 * 1024 * 250) {
+                alert("File is over 250mb!")
                 return;
             }
             document.getElementById("image").src = uploadingImage;
@@ -80,13 +80,11 @@
                 file = newFile;
             }
             console.log(file.type)
+            const formData = new FormData();
+            formData.append('file', file);
             fetch('/upload', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': file.type,
-                    'X-File-Name': file.name
-                },
-                body: file
+                body: formData
             })
                 .then(response => response.json())
                 .then(suckass => {

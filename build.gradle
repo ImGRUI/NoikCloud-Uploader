@@ -19,14 +19,17 @@ dependencies {
     shadow implementation('org.jetbrains:annotations:26.0.1')
     shadow implementation('org.projectlombok:lombok:1.18.26')
     shadow implementation('org.projectlombok:lombok:1.18.26')
-    shadow implementation('commons-io:commons-io:2.18.0')
+    shadow implementation('commons-io:commons-io:2.20.0')
     shadow implementation('commons-codec:commons-codec:1.17.1')
     testImplementation platform('org.junit:junit-bom:5.9.1')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation ('org.junit.jupiter:junit-jupiter')
 
     // Express.JS :ImFine:
     shadow implementation('ru.kelcuprum:java-express:0.2.4-dev.15')
-    shadow implementation("commons-fileupload:commons-fileupload:1.5")
+    shadow implementation("commons-fileupload:commons-fileupload:1.6.0")
+
+    // Servlet API
+    compileOnly('javax.servlet:javax.servlet-api:4.0.1')
 
     // Libs
     shadow implementation("ch.qos.logback:logback-classic:1.4.14")
