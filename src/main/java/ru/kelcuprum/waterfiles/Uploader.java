@@ -76,7 +76,7 @@ public class Uploader {
                             if (fileNames.containsKey(name))
                                 res.setHeader("Content-Disposition", "filename=\"" + fileNames.get(name) + "\"");
                             if (fileTypes.containsKey(name)) {
-                                res.setHeader("Content-Type", fileTypes.get(name));
+                                res.setContentType(fileTypes.get(name));
                                 if (fileTypes.get(name).startsWith("video") || fileTypes.get(name).startsWith("audio")) {
                                     res.setHeader("accept-ranges", "bytes");
                                     if (!req.getHeader("range").isEmpty())
