@@ -156,7 +156,7 @@ public class Uploader {
                             }
                         }
                     }
-                    if (responsesArray != null)
+                    if (!responsesArray.isEmpty())
                         res.json(responsesArray);
                 }
             } catch (FileUploadBase.SizeLimitExceededException e) {
