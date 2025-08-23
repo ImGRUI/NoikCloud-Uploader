@@ -36,7 +36,7 @@ public class Uploader {
     public static HashMap<String, String> fileDeletes = new HashMap<>();
     public static HashMap<String, String> fileTypes = new HashMap<>();
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
-    public static final int Threshold = 1024 * 1024 * 10;
+    public static final int Threshold = 1024 * 1024 * 5;
     public static final int MaxFileSize = 1024 * 1024 * 250;
     public static final int MaxRequestSize = 1024 * 1024 * 260;
 
@@ -82,13 +82,6 @@ public class Uploader {
             }
         });
         server.post("/upload", (req, res) -> {
-            if (!req.getHeader("X-File-Name").isEmpty()) {
-                JsonObject resp = new JsonObject();
-                resp.addProperty("url", "X-File-Name is deprecated");
-                resp.addProperty("delete_url", "Please remove X-File-Name header");
-                res.json(resp);
-                return;
-            }
             RequestContext request = new RequestContext() {
                 public String getContentType() {
                     return req.getContentType();
@@ -111,6 +104,7 @@ public class Uploader {
                 }
             };
             if (!ServletFileUpload.isMultipartContent(request)) {
+                System.out.println("Is_Multipart_400");
                 res.setStatus(Status._400);
                 res.json(BAD_REQUEST);
                 return;
@@ -124,6 +118,7 @@ public class Uploader {
             try {
                 List<FileItem> formItems = upload.parseRequest(request);
                 if (formItems == null) {
+                    System.out.println("Null_Form_Items_400");
                     res.setStatus(Status._400);
                     res.json(BAD_REQUEST);
                 } else {
@@ -146,9 +141,11 @@ public class Uploader {
                                 resp.addProperty("delete_url", String.format("%1$s/delete/%2$s", config.getString("url", "https://noikcloud.xyz"), delete_id));
                                 res.json(resp);
                             } catch (Exception e) {
+                                System.out.println("Parse_500");
                                 e.printStackTrace();
-                                res.setStatus(500);
+                                res.setStatus(Status._500);
                                 res.json(getErrorObject(e));
+                                break;
                             } finally {
                                 item.delete();
                             }
@@ -156,17 +153,19 @@ public class Uploader {
                     }
                 }
             } catch (FileUploadBase.SizeLimitExceededException e) {
-                res.setStatus(413);
+                System.out.println("Size_413");
+                res.setStatus(Status._413);
                 JsonObject error = new JsonObject();
                 error.addProperty("code", 413);
                 error.addProperty("codename", "Payload Too Large");
-                error.addProperty("message", "File is over 100mb!");
+                error.addProperty("message", "File is over 250mb!");
                 JsonObject resp = new JsonObject();
                 resp.add("error", error);
                 res.json(resp);
             } catch (Exception e) {
+                System.out.println("500");
                 e.printStackTrace();
-                res.setStatus(500);
+                res.setStatus(Status._500);
                 res.json(getErrorObject(e));
             }
         });
@@ -190,7 +189,7 @@ public class Uploader {
                     }
                 }
             } else {
-                res.setStatus(404);
+                res.setStatus(Status._404);
                 res.json(NOT_FOUND);
             }
         });
@@ -213,7 +212,7 @@ public class Uploader {
             res.send(resHtml);
         });
         server.all((req, res) -> {
-            res.setStatus(404);
+            res.setStatus(Status._404);
             res.send("File not found");
         });
         server.listen(config.getNumber("port", 1984).intValue());
