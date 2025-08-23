@@ -40,8 +40,8 @@ public class Uploader {
     public static final SecureRandom SECURE_RANDOM = new SecureRandom();
     public static final Tika tika = new Tika();
     public static final int Threshold = 1024 * 1024 * 5;
-    public static final int MaxFileSize = 1024 * 1024 * 250;
-    public static final int MaxRequestSize = 1024 * 1024 * 260;
+    public static final int MaxFileSize = 1024 * 1024 * 100;
+    public static final int MaxRequestSize = 1024 * 1024 * 100;
 
     public static void main(String[] args) throws IOException {
         try (InputStream releaseFile = Uploader.class.getResourceAsStream("/index.html")) {
