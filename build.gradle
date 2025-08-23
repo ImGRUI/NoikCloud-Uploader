@@ -31,6 +31,9 @@ dependencies {
     // Servlet API
     compileOnly('javax.servlet:javax.servlet-api:4.0.1')
 
+    // Tika (MimeType Extraction)
+    shadow implementation('org.apache.tika:tika-core:3.2.2')
+
     // Libs
     shadow implementation("ch.qos.logback:logback-classic:1.4.14")
     shadow implementation("ru.kelcuprum:CaffeineLib:1.0.0-dev.2")

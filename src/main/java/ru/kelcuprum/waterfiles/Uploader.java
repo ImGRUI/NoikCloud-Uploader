@@ -13,6 +13,7 @@ import org.apache.commons.fileupload.RequestContext;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.tika.Tika;
 import ru.kelcuprum.caffeinelib.CoffeeLogger;
 import ru.kelcuprum.caffeinelib.config.Config;
 
@@ -36,7 +37,8 @@ public class Uploader {
     public static HashMap<String, String> fileNames = new HashMap<>();
     public static HashMap<String, String> fileDeletes = new HashMap<>();
     public static HashMap<String, String> fileTypes = new HashMap<>();
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    public static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    public static final Tika tika = new Tika();
     public static final int Threshold = 1024 * 1024 * 5;
     public static final int MaxFileSize = 1024 * 1024 * 250;
     public static final int MaxRequestSize = 1024 * 1024 * 260;
@@ -75,7 +77,7 @@ public class Uploader {
                                 res.setHeader("Content-Disposition", "filename=\"" + fileNames.get(name) + "\"");
                             if (fileTypes.containsKey(name)) {
                                 res.setHeader("Content-Type", fileTypes.get(name));
-                                if (fileTypes.get(name).startsWith("video") || fileTypes.get(name).startsWith("audio") || fileTypes.get(name).equals("application/octet-stream")) {
+                                if (fileTypes.get(name).startsWith("video") || fileTypes.get(name).startsWith("audio")) {
                                     res.setHeader("accept-ranges", "bytes");
                                     if (!req.getHeader("range").isEmpty())
                                         res.setHeader("content-range", "bytes " + req.getHeader("range").getFirst() + file.length() + "/" + (file.length() + 1));
@@ -148,11 +150,11 @@ public class Uploader {
                     }
                     for (FileItem item : formItems) {
                         if (!item.isFormField()) {
-                            try {
+                            try (InputStream inputStream = item.getInputStream()) {
                                 String fileName = new File(item.getName()).getName();
+                                String fileTypeMedia = tika.detect(inputStream, fileName);
                                 String extension = FilenameUtils.getExtension(fileName);
                                 String fileType = extension.isEmpty() ? "" : "." + extension;
-                                String fileTypeMedia = item.getContentType();
                                 String id = makeID(7, false);
                                 String delete_id = makeID(21, true);
                                 File storeFile = new File(folder, id + fileType);
