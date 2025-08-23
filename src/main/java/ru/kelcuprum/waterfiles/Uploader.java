@@ -70,7 +70,7 @@ public class Uploader {
                             res.setHeader("Content-Disposition", "filename=\""+fileNames.get(name)+"\"");
                         if (fileTypes.containsKey(name)) {
                             res.setHeader("Content-Type", fileTypes.get(name));
-                            if(fileTypes.get(name).startsWith("video") || fileTypes.get(name).startsWith("audio")){
+                            if (fileTypes.get(name).startsWith("video") || fileTypes.get(name).startsWith("audio") || fileTypes.get(name).startsWith("application")) {
                                 res.setHeader("accept-ranges", "bytes");
                                 if(!req.getHeader("range").isEmpty()) res.setHeader("content-range", "bytes "+req.getHeader("range").getFirst()+file.length()+"/"+(file.length()+1));
                             }
@@ -88,7 +88,11 @@ public class Uploader {
                 }
 
                 public int getContentLength() {
-                    return (int) req.getContentLength();
+                    if (req.getContentLength() > 2147483647) {
+                        return 2147483647;
+                    } else {
+                        return (int) req.getContentLength();
+                    }
                 }
 
                 public String getCharacterEncoding() {
@@ -117,11 +121,12 @@ public class Uploader {
             upload.setSizeMax(MaxRequestSize);
             try {
                 List<FileItem> formItems = upload.parseRequest(request);
-                if (formItems == null) {
+                if (formItems == null || formItems.isEmpty()) {
                     System.out.println("Null_Form_Items_400");
                     res.setStatus(Status._400);
                     res.json(BAD_REQUEST);
                 } else {
+                    JsonArray responsesArray = new JsonArray();
                     for (FileItem item : formItems) {
                         if (!item.isFormField()) {
                             try {
@@ -139,7 +144,7 @@ public class Uploader {
                                 resp.addProperty("type", fileTypeMedia);
                                 resp.addProperty("url", String.format("%1$s/%2$s", config.getString("url", "https://noikcloud.xyz"), id));
                                 resp.addProperty("delete_url", String.format("%1$s/delete/%2$s", config.getString("url", "https://noikcloud.xyz"), delete_id));
-                                res.json(resp);
+                                responsesArray.add(resp);
                             } catch (Exception e) {
                                 System.out.println("Parse_500");
                                 e.printStackTrace();
@@ -151,6 +156,8 @@ public class Uploader {
                             }
                         }
                     }
+                    if (responsesArray != null)
+                        res.json(responsesArray);
                 }
             } catch (FileUploadBase.SizeLimitExceededException e) {
                 System.out.println("Size_413");
