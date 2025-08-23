@@ -30,6 +30,7 @@ public class Uploader {
     public static Config config = new Config("./config.json");
     public static Config links = new Config("./files.json");
     public static File mainFolder = new File("./files");
+    public static File favicon = new File(mainFolder, "favicon.ico");
     public static String folder = "./files";
     public static String html = "";
     public static HashMap<String, String> fileNames = new HashMap<>();
@@ -61,22 +62,28 @@ public class Uploader {
         server.use((req, res) -> LOG.log(String.format("%s made request to %s", req.getIp(), req.getPath())));
         // -=-=-=-=-
         server.all("/:id", (req, res) -> {
-            String id = req.getParam("id").split("\\.")[0];
-            for (File file : mainFolder.listFiles()) {
-                if (file.isFile()) {
-                    String name = file.getName().split("\\.")[0];
-                    if (name.equals(id)) {
-                        if(fileNames.containsKey(name))
-                            res.setHeader("Content-Disposition", "filename=\""+fileNames.get(name)+"\"");
-                        if (fileTypes.containsKey(name)) {
-                            res.setHeader("Content-Type", fileTypes.get(name));
-                            if (fileTypes.get(name).startsWith("video") || fileTypes.get(name).startsWith("audio") || fileTypes.get(name).startsWith("application")) {
-                                res.setHeader("accept-ranges", "bytes");
-                                if(!req.getHeader("range").isEmpty()) res.setHeader("content-range", "bytes "+req.getHeader("range").getFirst()+file.length()+"/"+(file.length()+1));
+            if (req.getParam("id").equals("favicon.ico")) {
+                res.setContentType("image/x-icon");
+                res.send(favicon.toPath());
+            } else {
+                String id = req.getParam("id").split("\\.")[0];
+                for (File file : mainFolder.listFiles()) {
+                    if (file.isFile()) {
+                        String name = file.getName().split("\\.")[0];
+                        if (name.equals(id)) {
+                            if (fileNames.containsKey(name))
+                                res.setHeader("Content-Disposition", "filename=\"" + fileNames.get(name) + "\"");
+                            if (fileTypes.containsKey(name)) {
+                                res.setHeader("Content-Type", fileTypes.get(name));
+                                if (fileTypes.get(name).startsWith("video") || fileTypes.get(name).startsWith("audio") || fileTypes.get(name).equals("application/octet-stream")) {
+                                    res.setHeader("accept-ranges", "bytes");
+                                    if (!req.getHeader("range").isEmpty())
+                                        res.setHeader("content-range", "bytes " + req.getHeader("range").getFirst() + file.length() + "/" + (file.length() + 1));
+                                }
                             }
+                            res.send(file.toPath());
+                            break;
                         }
-                        res.send(file.toPath());
-                        break;
                     }
                 }
             }
