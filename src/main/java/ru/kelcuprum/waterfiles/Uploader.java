@@ -133,7 +133,19 @@ public class Uploader {
                     res.setStatus(Status._400);
                     res.json(BAD_REQUEST);
                 } else {
-                    JsonArray responsesArray = new JsonArray();
+                    byte count = 0;
+                    for (FileItem item : formItems) {
+                        if (!item.isFormField()) {
+                            if (count == 1) {
+                                System.out.println("Too_Much_Files");
+                                res.setStatus(Status._400);
+                                res.json(COUNT);
+                                return;
+                            } else {
+                                count++;
+                            }
+                        }
+                    }
                     for (FileItem item : formItems) {
                         if (!item.isFormField()) {
                             try {
@@ -151,7 +163,7 @@ public class Uploader {
                                 resp.addProperty("type", fileTypeMedia);
                                 resp.addProperty("url", String.format("%1$s/%2$s", config.getString("url", "https://noikcloud.xyz"), id));
                                 resp.addProperty("delete_url", String.format("%1$s/delete/%2$s", config.getString("url", "https://noikcloud.xyz"), delete_id));
-                                responsesArray.add(resp);
+                                res.json(resp);
                             } catch (Exception e) {
                                 System.out.println("Parse_500");
                                 e.printStackTrace();
@@ -163,19 +175,11 @@ public class Uploader {
                             }
                         }
                     }
-                    if (!responsesArray.isEmpty())
-                        res.json(responsesArray);
                 }
             } catch (FileUploadBase.SizeLimitExceededException e) {
                 System.out.println("Size_413");
                 res.setStatus(Status._413);
-                JsonObject error = new JsonObject();
-                error.addProperty("code", 413);
-                error.addProperty("codename", "Payload Too Large");
-                error.addProperty("message", "File is over 250mb!");
-                JsonObject resp = new JsonObject();
-                resp.add("error", error);
-                res.json(resp);
+                res.json(PAYLOAD);
             } catch (Exception e) {
                 System.out.println("500");
                 e.printStackTrace();
