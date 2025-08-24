@@ -174,6 +174,7 @@ public class Uploader {
                                 break;
                             } finally {
                                 item.delete();
+                                System.out.println("Success");
                             }
                         }
                     }
