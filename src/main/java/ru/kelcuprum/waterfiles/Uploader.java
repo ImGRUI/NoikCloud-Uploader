@@ -37,6 +37,7 @@ public class Uploader {
     public static HashMap<String, String> fileNames = new HashMap<>();
     public static HashMap<String, String> fileDeletes = new HashMap<>();
     public static HashMap<String, String> fileTypes = new HashMap<>();
+    public static HashMap<String, File> files = new HashMap<>();
     public static final SecureRandom SECURE_RANDOM = new SecureRandom();
     public static final Tika tika = new Tika();
     public static final int Threshold = 1024 * 1024 * 5;
@@ -59,6 +60,7 @@ public class Uploader {
         LOG.log("Hello, world!");
         mainFolder = new File(config.getString("folder", "./files"));
         checkFolders();
+        CacheFiles();
         server = new Express();
         server.use(Middleware.cors());
         server.use((req, res) -> LOG.log(String.format("%s made request to %s", req.getIp(), req.getPath())));
@@ -69,23 +71,21 @@ public class Uploader {
                 res.send(favicon.toPath());
             } else {
                 String id = req.getParam("id").split("\\.")[0];
-                for (File file : mainFolder.listFiles()) {
-                    if (file.isFile()) {
-                        String name = file.getName().split("\\.")[0];
-                        if (name.equals(id)) {
-                            if (fileNames.containsKey(name))
-                                res.setHeader("Content-Disposition", "filename=\"" + fileNames.get(name) + "\"");
-                            if (fileTypes.containsKey(name)) {
-                                res.setContentType(fileTypes.get(name));
-                                if (fileTypes.get(name).startsWith("video") || fileTypes.get(name).startsWith("audio")) {
-                                    res.setHeader("accept-ranges", "bytes");
-                                    if (!req.getHeader("range").isEmpty())
-                                        res.setHeader("content-range", "bytes " + req.getHeader("range").getFirst() + file.length() + "/" + (file.length() + 1));
-                                }
+                File file = getFileByID(id);
+                if (file != null) {
+                    String name = file.getName().split("\\.")[0];
+                    if (name.equals(id)) {
+                        if (fileNames.containsKey(name))
+                            res.setHeader("Content-Disposition", "filename=\"" + fileNames.get(name) + "\"");
+                        if (fileTypes.containsKey(name)) {
+                            res.setContentType(fileTypes.get(name));
+                            if (fileTypes.get(name).startsWith("video") || fileTypes.get(name).startsWith("audio")) {
+                                res.setHeader("accept-ranges", "bytes");
+                                if (!req.getHeader("range").isEmpty())
+                                    res.setHeader("content-range", "bytes " + req.getHeader("range").getFirst() + file.length() + "/" + (file.length() + 1));
                             }
-                            res.send(file.toPath());
-                            break;
                         }
+                        res.send(file.toPath());
                     }
                 }
             }
@@ -99,17 +99,13 @@ public class Uploader {
                 public int getContentLength() {
                     if (req.getContentLength() > 2147483647) {
                         return 2147483647;
-                    } else {
-                        return (int) req.getContentLength();
-                    }
+                    } else return (int) req.getContentLength();
                 }
 
                 public String getCharacterEncoding() {
-                    if (req.getContentType() != null && req.getContentType().contains("charset=")) {
-                        return req.getContentType().split("charset=")[1].split(";")[0].trim();
-                    } else {
-                        return null;
-                    }
+                    if (req.getContentType() != null && req.getContentType().toLowerCase().contains("charset=")) {
+                        return req.getContentType().toLowerCase().split("charset=")[1].split(";")[0].trim();
+                    } else return null;
                 }
 
                 public InputStream getInputStream() {
@@ -159,6 +155,7 @@ public class Uploader {
                                 String delete_id = makeID(21, true);
                                 File storeFile = new File(folder, id + fileType);
                                 item.write(storeFile);
+                                files.put(id, storeFile);
                                 addFilename(id, fileName, delete_id, fileTypeMedia);
                                 JsonObject resp = new JsonObject();
                                 resp.addProperty("id", id);
@@ -197,16 +194,15 @@ public class Uploader {
                 if (fileDeletes.get(name).contains(id)) idFile = name;
             }
             if (fileDeletes.containsValue(id)) {
-                for (File file : mainFolder.listFiles()) {
-                    if (file.isFile()) {
-                        String name = file.getName().split("\\.")[0];
-                        if (name.equals(idFile)) {
-                            file.delete();
-                            fileNames.remove(idFile);
-                            fileDeletes.remove(idFile);
-                            res.send("File deleted");
-                            break;
-                        }
+                File file = getFileByID(idFile);
+                if (file != null) {
+                    String name = file.getName().split("\\.")[0];
+                    if (name.equals(idFile)) {
+                        file.delete();
+                        fileNames.remove(idFile);
+                        fileDeletes.remove(idFile);
+                        files.remove(idFile, file);
+                        res.send("File deleted");
                     }
                 }
             } else {
@@ -277,9 +273,9 @@ public class Uploader {
 
     public static boolean isIDCorrect(String id, boolean isDelete) {
         if (!isDelete) {
-            for (File file : mainFolder.listFiles())
-                if (file.isFile())
-                    if (file.getName().split("\\.")[0].equals(id)) return false;
+            File file = getFileByID(id);
+            if (file != null)
+                return !file.getName().split("\\.")[0].equals(id);
         } else return !fileDeletes.containsKey(id);
         return true;
     }
@@ -287,6 +283,25 @@ public class Uploader {
 
     public static void checkFolders() throws IOException {
         if (!mainFolder.exists()) Files.createDirectory(mainFolder.toPath());
+    }
+
+    public static void CacheFiles() {
+        for (File file : mainFolder.listFiles()) {
+            if (file.isFile()) {
+                String id = file.getName().split("\\.")[0];
+                files.put(id, file);
+            }
+        }
+    }
+
+    public static File getFileByID (String id) {
+        File needFile;
+        needFile = files.get(id);
+        if (needFile != null && !needFile.exists()) {
+            files.remove(id);
+            needFile = null;
+        }
+        return needFile;
     }
 
     public static CoffeeLogger LOG = new CoffeeLogger("NoikCloud/Uploader");
