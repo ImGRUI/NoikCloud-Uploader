@@ -25,7 +25,7 @@ dependencies {
     testImplementation ('org.junit.jupiter:junit-jupiter')
 
     // Express.JS :ImFine:
-    shadow implementation('ru.kelcuprum:java-express:0.2.4-dev.20')
+    shadow implementation('ru.kelcuprum:java-express:0.2.5-dev.3')
     shadow implementation("commons-fileupload:commons-fileupload:1.6.0")
 
     // Servlet API

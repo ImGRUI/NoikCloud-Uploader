@@ -18,6 +18,7 @@ import ru.kelcuprum.caffeinelib.CoffeeLogger;
 import ru.kelcuprum.caffeinelib.config.Config;
 
 import java.io.*;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.HashMap;
@@ -74,15 +75,19 @@ public class Uploader {
                 File file = getFileByID(id);
                 if (file != null) {
                     String name = file.getName().split("\\.")[0];
+                    String encoded = URLEncoder.encode(fileNames.get(name), StandardCharsets.UTF_8);
                     if (name.equals(id)) {
                         if (fileNames.containsKey(name))
-                            res.setHeader("Content-Disposition", "filename=\"" + fileNames.get(name) + "\"");
+                            res.setHeader("Content-Disposition", "filename*=UTF-8''" + encoded);
                         if (fileTypes.containsKey(name)) {
                             res.setContentType(fileTypes.get(name));
                             if (fileTypes.get(name).startsWith("video") || fileTypes.get(name).startsWith("audio")) {
                                 res.setHeader("accept-ranges", "bytes");
                                 if (!req.getHeader("range").isEmpty())
                                     res.setHeader("content-range", "bytes " + req.getHeader("range").getFirst() + file.length() + "/" + (file.length() + 1));
+                            }
+                            if (fileTypes.get(name).startsWith("text")) {
+                                res.setContentType(fileTypes.get(name) + "; charset=UTF-8");
                             }
                         }
                         res.send(file.toPath());
@@ -103,9 +108,7 @@ public class Uploader {
                 }
 
                 public String getCharacterEncoding() {
-                    if (req.getContentType() != null && req.getContentType().toLowerCase().contains("charset=")) {
-                        return req.getContentType().toLowerCase().split("charset=")[1].split(";")[0].trim();
-                    } else return null;
+                    return "UTF-8";
                 }
 
                 public InputStream getInputStream() {
@@ -122,6 +125,7 @@ public class Uploader {
             factory.setSizeThreshold(Threshold);
             factory.setRepository(new File(System.getProperty("java.io.tmpdir")));
             ServletFileUpload upload = new ServletFileUpload(factory);
+            upload.setHeaderEncoding("UTF-8");
             upload.setFileSizeMax(MaxFileSize);
             upload.setSizeMax(MaxRequestSize);
             try {

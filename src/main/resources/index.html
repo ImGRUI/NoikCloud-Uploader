@@ -72,13 +72,6 @@
             document.getElementById("description").innerHTML = ""
             document.getElementById("msg")
                 .innerHTML = "";
-            if (/[а-яА-Я`]/.test(file.name)) {
-                let type = file.name.split("\.").length <= 1 ? "" : file.name.split("\.")[file.name.split("\.").length - 1]
-                var newFile
-                var blob = file.slice(0, file.size, file.type);
-                newFile = new File([blob], 'name.' + type, { type: file.type });
-                file = newFile;
-            }
             console.log(file.type)
             const formData = new FormData();
             formData.append('file', file);
