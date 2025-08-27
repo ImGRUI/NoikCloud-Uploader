@@ -164,6 +164,7 @@ public class Uploader {
                                 JsonObject resp = new JsonObject();
                                 resp.addProperty("id", id);
                                 resp.addProperty("type", fileTypeMedia);
+                                resp.addProperty("ext", extension);
                                 resp.addProperty("url", String.format("%1$s/%2$s", config.getString("url", "https://noikcloud.xyz"), id));
                                 resp.addProperty("delete_url", String.format("%1$s/delete/%2$s", config.getString("url", "https://noikcloud.xyz"), delete_id));
                                 res.json(resp);

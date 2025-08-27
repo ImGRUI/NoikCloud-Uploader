@@ -129,7 +129,6 @@
         }
         function addToHistory(url) {
             history.unshift(url);
-            // addHistoryElement(url, true)
             localStorage.setItem("history", JSON.stringify(history))
             loadHistory();
         }
@@ -142,7 +141,8 @@
             let b = document.createElement("button")
             let url = data.url;
             a.href = url;
-            a.innerText = data.url.split("/")[2] + "/" + data.url.split("/")[3];
+            if (data.ext === undefined) a.innerText = data.url.split("/")[2] + "/" + data.url.split("/")[3];
+            else a.innerText = data.url.split("/")[2] + "/" + data.url.split("/")[3] + "." + data.ext;
             b.innerText = "Copy";
             b.onclick = (s) => {
                 let heh = url;
@@ -152,7 +152,7 @@
             b.style = "margin-left: 10pt;"
             p.appendChild(a);
             p.appendChild(b);
-            if(data.delete_url.length != 0){
+            if (data.delete_url.length != 0) {
                 let bd = document.createElement("button")
                 bd.style = "margin-left: 5pt"
                 bd.innerText = "Delete";
@@ -176,11 +176,6 @@
                 }
                 p.appendChild(bd);
             }
-            // if (prepend && div.children.length > 1) {
-            //     div.insertBefore(p, div.children[1]);
-            // } else {
-            //     div.appendChild(p);
-            // }
             div.appendChild(p);
         }
         async function onCopy() {
