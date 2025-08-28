@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import express.Express;
+import express.middleware.FileStatics;
 import express.middleware.Middleware;
 import express.utils.MediaType;
 import express.utils.Status;
@@ -21,6 +22,7 @@ import java.io.*;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.security.SecureRandom;
@@ -67,31 +69,26 @@ public class Uploader {
         server.use((req, res) -> LOG.log(String.format("%s made request to %s", req.getIp(), req.getPath())));
         // -=-=-=-=-
         server.all("/:id", (req, res) -> {
-            if (req.getParam("id").equals("favicon.ico")) {
-                res.setContentType("image/x-icon");
-                res.send(favicon.toPath());
-            } else {
-                String id = req.getParam("id").split("\\.")[0];
-                File file = getFileByID(id);
-                if (file != null) {
-                    String name = file.getName().split("\\.")[0];
-                    String encoded = URLEncoder.encode(fileNames.get(name), StandardCharsets.UTF_8);
-                    if (name.equals(id)) {
-                        if (fileNames.containsKey(name))
-                            res.setHeader("Content-Disposition", "filename*=UTF-8''" + encoded);
-                        if (fileTypes.containsKey(name)) {
-                            res.setContentType(fileTypes.get(name));
-                            if (fileTypes.get(name).startsWith("video") || fileTypes.get(name).startsWith("audio")) {
-                                res.setHeader("accept-ranges", "bytes");
-                                if (!req.getHeader("range").isEmpty())
-                                    res.setHeader("content-range", "bytes " + req.getHeader("range").getFirst() + file.length() + "/" + (file.length() + 1));
-                            }
-                            if (fileTypes.get(name).startsWith("text")) {
-                                res.setContentType(fileTypes.get(name) + "; charset=UTF-8");
-                            }
+            String id = req.getParam("id").split("\\.")[0];
+            File file = getFileByID(id);
+            if (file != null) {
+                String name = file.getName().split("\\.")[0];
+                String encoded = URLEncoder.encode(fileNames.get(name), StandardCharsets.UTF_8);
+                if (name.equals(id)) {
+                    if (fileNames.containsKey(name))
+                        res.setHeader("Content-Disposition", "filename*=UTF-8''" + encoded);
+                    if (fileTypes.containsKey(name)) {
+                        res.setContentType(fileTypes.get(name));
+                        if (fileTypes.get(name).startsWith("video") || fileTypes.get(name).startsWith("audio")) {
+                            res.setHeader("accept-ranges", "bytes");
+                            if (!req.getHeader("range").isEmpty())
+                                res.setHeader("content-range", "bytes " + req.getHeader("range").getFirst() + file.length() + "/" + (file.length() + 1));
                         }
-                        res.send(file.toPath());
+                        if (fileTypes.get(name).startsWith("text")) {
+                            res.setContentType(fileTypes.get(name) + "; charset=UTF-8");
+                        }
                     }
+                    res.send(file.toPath());
                 }
             }
         });
@@ -233,6 +230,16 @@ public class Uploader {
             res.setContentType(MediaType._html);
             res.send(resHtml);
         });
+        boolean staticEnable = true;
+        if (!Path.of("./static").toFile().exists()) {
+            try {
+                Files.createDirectory(Path.of("./static"));
+            } catch (Exception ex){
+                ex.printStackTrace();
+                staticEnable = false;
+            }
+        }
+        if (staticEnable) server.all(new FileStatics("static"));
         server.all((req, res) -> {
             res.setStatus(Status._404);
             res.send("File not found");
