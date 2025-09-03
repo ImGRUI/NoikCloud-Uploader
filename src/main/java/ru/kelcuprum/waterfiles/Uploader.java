@@ -73,6 +73,7 @@ public class Uploader {
             if (file != null) {
                 String name = file.getName().split("\\.")[0];
                 String encoded = URLEncoder.encode(fileNames.get(name), StandardCharsets.UTF_8);
+                encoded = encoded.replace("+", "%20");
                 if (name.equals(id)) {
                     if (fileNames.containsKey(name))
                         res.setHeader("Content-Disposition", "filename*=UTF-8''" + encoded);
