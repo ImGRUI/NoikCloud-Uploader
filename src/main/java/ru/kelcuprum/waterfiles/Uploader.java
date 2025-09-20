@@ -24,10 +24,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.security.SecureRandom;
-import java.util.Map;
 
 import static ru.kelcuprum.waterfiles.Objects.*;
 
@@ -47,22 +45,6 @@ public class Uploader {
     public static final int Threshold = 1024 * 1024 * 10;
     public static final int MaxFileSize = 1024 * 1024 * 100;
     public static final int MaxRequestSize = 1024 * 1024 * 100;
-    public static final byte CACHE_SIZE = 5;
-    public static final byte MIN_REQUESTS = 2;
-    public static final Map<String, Integer> requestCountMap = new HashMap<>();
-    public static final LinkedHashMap<String, byte[]> fileContentCache = new LinkedHashMap<>(CACHE_SIZE + 1, 0.75f, true) {
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<String, byte[]> eldest) {
-            boolean shouldRemove = size() > CACHE_SIZE;
-            if (shouldRemove) {
-                String removed = eldest.getKey();
-                synchronized (requestCountMap) {
-                    requestCountMap.remove(removed);
-                }
-            }
-            return shouldRemove;
-        }
-    };
 
     public static void main(String[] args) throws IOException {
         try (InputStream releaseFile = Uploader.class.getResourceAsStream("/index.html")) {
@@ -93,31 +75,6 @@ public class Uploader {
                 String encoded = URLEncoder.encode(fileNames.get(name), StandardCharsets.UTF_8);
                 encoded = encoded.replace("+", "%20");
                 if (name.equals(id)) {
-                    boolean cache = false;
-                    byte[] cachedContent;
-                    int currentCount;
-                    synchronized (fileContentCache) {
-                        if (fileContentCache.containsKey(id)) {
-                            cache = true;
-                            cachedContent = fileContentCache.get(id);
-                        } else {
-                            currentCount = requestCountMap.getOrDefault(id, 0) + 1;
-                            requestCountMap.put(id, currentCount);
-                            cachedContent = fileContentCache.get(id);
-                            if (currentCount > MIN_REQUESTS) {
-                                try {
-                                    System.out.println("Writing Cache to " + id);
-                                    cachedContent = Files.readAllBytes(file.toPath());
-                                    fileContentCache.put(id, cachedContent);
-                                } catch (IOException e) {
-                                    LOG.log("Failed to cache " + id + e.getMessage());
-                                }
-                            }
-                            if (cachedContent != null) {
-                                cache = true;
-                            }
-                        }
-                    }
                     if (fileNames.containsKey(name))
                         res.setHeader("Content-Disposition", "filename*=UTF-8''" + encoded);
                     if (fileTypes.containsKey(name)) {
@@ -125,19 +82,13 @@ public class Uploader {
                         if (fileTypes.get(name).startsWith("video") || fileTypes.get(name).startsWith("audio")) {
                             res.setHeader("accept-ranges", "bytes");
                             if (!req.getHeader("range").isEmpty())
-                                if (cache) res.setHeader("content-range", "bytes " + req.getHeader("range").getFirst() + cachedContent.length + "/" + (cachedContent.length + 1));
-                                else res.setHeader("content-range", "bytes " + req.getHeader("range").getFirst() + file.length() + "/" + (file.length() + 1));
+                                res.setHeader("content-range", "bytes " + req.getHeader("range").getFirst() + file.length() + "/" + (file.length() + 1));
                         }
                         if (fileTypes.get(name).startsWith("text")) {
                             res.setContentType(fileTypes.get(name) + "; charset=UTF-8");
                         }
                     }
-                    if (cache) {
-                        res.sendBytes(cachedContent, res.getContentType());
-                        System.out.println("Serving from cache");
-                    } else {
-                        res.send(file.toPath());
-                    }
+                    res.send(file.toPath());
                 }
             }
         });
@@ -249,10 +200,6 @@ public class Uploader {
                 if (file != null) {
                     String name = file.getName().split("\\.")[0];
                     if (name.equals(idFile)) {
-                        synchronized (fileContentCache) {
-                            fileContentCache.remove(idFile);
-                            requestCountMap.remove(idFile);
-                        }
                         file.delete();
                         fileNames.remove(idFile);
                         fileDeletes.remove(idFile);
