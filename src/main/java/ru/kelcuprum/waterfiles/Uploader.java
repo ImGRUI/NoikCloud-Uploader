@@ -48,7 +48,7 @@ public class Uploader {
     public static final int MaxFileSize = 1024 * 1024 * 100;
     public static final int MaxRequestSize = 1024 * 1024 * 100;
     public static final byte CACHE_SIZE = 5;
-    public static final byte MIN_REQUESTS = 3;
+    public static final byte MIN_REQUESTS = 2;
     public static final Map<String, Integer> requestCountMap = new HashMap<>();
     public static final LinkedHashMap<String, byte[]> fileContentCache = new LinkedHashMap<>(CACHE_SIZE + 1, 0.75f, true) {
         @Override
@@ -105,6 +105,7 @@ public class Uploader {
                             requestCountMap.put(id, currentCount);
                             if (currentCount > MIN_REQUESTS) {
                                 try {
+                                    System.out.println("Writing Cache to " + id);
                                     cachedContent = Files.readAllBytes(file.toPath());
                                     fileContentCache.put(id, cachedContent);
                                 } catch (IOException e) {
@@ -132,6 +133,7 @@ public class Uploader {
                     }
                     if (cache) {
                         res.sendBytes(cachedContent, res.getContentType());
+                        System.out.println("Serving from cache");
                     } else {
                         res.send(file.toPath());
                     }
