@@ -94,7 +94,7 @@ public class Uploader {
                 encoded = encoded.replace("+", "%20");
                 if (name.equals(id)) {
                     boolean cache = false;
-                    byte[] cachedContent;
+                    byte[] cachedContent = null;
                     int currentCount;
                     synchronized (fileContentCache) {
                         if (fileContentCache.containsKey(id)) {
@@ -103,7 +103,6 @@ public class Uploader {
                         } else {
                             currentCount = requestCountMap.getOrDefault(id, 0) + 1;
                             requestCountMap.put(id, currentCount);
-                            cachedContent = fileContentCache.get(id);
                             if (currentCount > MIN_REQUESTS) {
                                 try {
                                     System.out.println("Writing Cache to " + id);
