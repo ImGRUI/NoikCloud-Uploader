@@ -239,7 +239,7 @@ public class Uploader {
                 staticEnable = false;
             }
         }
-        if (staticEnable) server.all(new FileStatics("static"));
+        if (staticEnable) server.all(new FileStatics("./static"));
         server.all((req, res) -> {
             res.setStatus(Status._404);
             res.send("File not found");
