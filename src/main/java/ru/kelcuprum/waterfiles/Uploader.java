@@ -78,14 +78,20 @@ public class Uploader {
                     if (fileNames.containsKey(name))
                         res.setHeader("Content-Disposition", "filename*=UTF-8''" + encoded);
                     if (fileTypes.containsKey(name)) {
-                        res.setContentType(fileTypes.get(name));
-                        if (fileTypes.get(name).startsWith("video") || fileTypes.get(name).startsWith("audio")) {
+                        String FileType = fileTypes.get(name);
+                        res.setContentType(FileType);
+                        if (FileType.startsWith("video") || FileType.startsWith("audio")) {
                             res.setHeader("accept-ranges", "bytes");
                             if (!req.getHeader("range").isEmpty())
                                 res.setHeader("content-range", "bytes " + req.getHeader("range").getFirst() + file.length() + "/" + (file.length() + 1));
                         }
-                        if (fileTypes.get(name).startsWith("text")) {
-                            res.setContentType(fileTypes.get(name) + "; charset=UTF-8");
+                        if (FileType.startsWith("text") || FileType.startsWith("application/xhtml") || FileType.startsWith("multipart/related") || FileType.startsWith("application/javascript") || FileType.startsWith("application/xml") || FileType.startsWith("message/rfc822")) {
+                            res.setContentType("text/plain; charset=UTF-8");
+                            res.setHeader("X-Content-Type-Options", "nosniff");
+                        }
+                        if (FileType.startsWith("image/svg")) {
+                            res.setContentType("application/octet-stream");
+                            res.setHeader("X-Content-Type-Options", "nosniff");
                         }
                     }
                     res.send(file.toPath());
