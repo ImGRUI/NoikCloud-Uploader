@@ -87,11 +87,9 @@ public class Uploader {
                         }
                         if (FileType.startsWith("text") || FileType.startsWith("application/xhtml") || FileType.startsWith("multipart/related") || FileType.startsWith("application/javascript") || FileType.startsWith("application/xml") || FileType.startsWith("message/rfc822")) {
                             res.setContentType("text/plain; charset=UTF-8");
-                            res.setHeader("X-Content-Type-Options", "nosniff");
                         }
                         if (FileType.startsWith("image/svg")) {
                             res.setContentType("application/octet-stream");
-                            res.setHeader("X-Content-Type-Options", "nosniff");
                         }
                     }
                     res.send(file.toPath());
