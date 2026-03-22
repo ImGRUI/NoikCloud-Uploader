@@ -4,6 +4,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import express.Express;
+import express.http.request.Request;
+import express.http.response.Response;
 import express.middleware.FileStatics;
 import express.middleware.Middleware;
 import express.utils.MediaType;
@@ -36,6 +38,7 @@ public class Uploader {
     public static File mainFolder = new File("./files");
     public static String folder = "./files";
     public static String html = "";
+    public static String videoHtml = "";
     public static HashMap<String, String> fileNames = new HashMap<>();
     public static HashMap<String, String> fileDeletes = new HashMap<>();
     public static HashMap<String, String> fileTypes = new HashMap<>();
@@ -49,6 +52,9 @@ public class Uploader {
     public static void main(String[] args) throws IOException {
         try (InputStream releaseFile = Uploader.class.getResourceAsStream("/index.html")) {
             if (releaseFile != null) html = new String(releaseFile.readAllBytes(), StandardCharsets.UTF_8);
+        }
+        try (InputStream releaseFile = Uploader.class.getResourceAsStream("/video.html")) {
+            if (releaseFile != null) videoHtml = new String(releaseFile.readAllBytes(), StandardCharsets.UTF_8);
         }
         JsonArray h = links.getJsonArray("names", new JsonArray());
         links.load();
@@ -72,18 +78,20 @@ public class Uploader {
             File file = getFileByID(id);
             if (file != null) {
                 String name = file.getName().split("\\.")[0];
-                String encoded = URLEncoder.encode(fileNames.get(name), StandardCharsets.UTF_8);
-                encoded = encoded.replace("+", "%20");
                 if (name.equals(id)) {
-                    if (fileNames.containsKey(name))
-                        res.setHeader("Content-Disposition", "filename*=UTF-8''" + encoded);
                     if (fileTypes.containsKey(name)) {
                         String FileType = fileTypes.get(name);
+                        if (FileType.startsWith("video")) {
+                            sendHtml(videoHtml, "./video.html", id, fileNames.get(name), res);
+                        }
+                        if (fileNames.containsKey(name)) {
+                            String encoded = URLEncoder.encode(fileNames.get(name), StandardCharsets.UTF_8);
+                            encoded = encoded.replace("+", "%20");
+                            res.setHeader("Content-Disposition", "filename*=UTF-8''" + encoded);
+                        }
                         res.setContentType(FileType);
-                        if (FileType.startsWith("video") || FileType.startsWith("audio")) {
-                            res.setHeader("accept-ranges", "bytes");
-                            if (!req.getHeader("range").isEmpty())
-                                res.setHeader("content-range", "bytes " + req.getHeader("range").getFirst() + file.length() + "/" + (file.length() + 1));
+                        if (FileType.startsWith("audio")) {
+                            chromeCompat(file,req,res);
                         }
                         if (FileType.startsWith("text") || FileType.startsWith("application/xhtml") || FileType.startsWith("multipart/related") || FileType.startsWith("application/javascript") || FileType.startsWith("application/xml") || FileType.startsWith("message/rfc822")) {
                             res.setContentType("text/plain; charset=UTF-8");
@@ -93,6 +101,27 @@ public class Uploader {
                         }
                     }
                     res.send(file.toPath());
+                }
+            }
+        });
+        server.all("/raw/:id", (req, res) -> {
+            String id = req.getParam("id").split("\\.")[0];
+            File file = getFileByID(id);
+            if (file != null) {
+                String name = file.getName().split("\\.")[0];
+                if (name.equals(id)) {
+                    if (fileNames.containsKey(name)) {
+                        String encoded = URLEncoder.encode(fileNames.get(name), StandardCharsets.UTF_8);
+                        encoded = encoded.replace("+", "%20");
+                        res.setHeader("Content-Disposition", "filename*=UTF-8''" + encoded);
+                    }
+                    if (fileTypes.containsKey(name)) {
+                        String FileType = fileTypes.get(name);
+                        if (FileType.startsWith("video")) {
+                            chromeCompat(file,req,res);
+                            res.send(file.toPath());
+                        }
+                    }
                 }
             }
         });
@@ -318,6 +347,28 @@ public class Uploader {
             needFile = null;
         }
         return needFile;
+    }
+
+    public static void sendHtml(String html, String htmlType, String id, String fileName, Response res) {
+        if (fileName == null || fileName.isEmpty()) fileName = id;
+        String page = html;
+        File filePage = new File(htmlType);
+        if (filePage.exists()) {
+            try {
+                page = Files.readString(filePage.toPath());
+            } catch (Exception ignored) {
+                ignored.printStackTrace();
+            }
+        }
+        String resHtml = page.replace("{SOURCE_ID}", id).replace("{TITLE}", fileName);
+        res.setContentType(MediaType._html);
+        res.send(resHtml);
+    }
+
+    public static void chromeCompat(File file, Request req, Response res) {
+        res.setHeader("accept-ranges", "bytes");
+        if (!req.getHeader("range").isEmpty())
+            res.setHeader("content-range", "bytes " + req.getHeader("range").getFirst() + file.length() + "/" + (file.length() + 1));
     }
 
     public static CoffeeLogger LOG = new CoffeeLogger("NoikCloud/Uploader");
