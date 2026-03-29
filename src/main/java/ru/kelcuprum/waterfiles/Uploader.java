@@ -39,6 +39,7 @@ public class Uploader {
     public static String folder = "./files";
     public static String html = "";
     public static String videoHtml = "";
+    public static String audioHtml = "";
     public static HashMap<String, String> fileNames = new HashMap<>();
     public static HashMap<String, String> fileDeletes = new HashMap<>();
     public static HashMap<String, String> fileTypes = new HashMap<>();
@@ -55,6 +56,9 @@ public class Uploader {
         }
         try (InputStream releaseFile = Uploader.class.getResourceAsStream("/video.html")) {
             if (releaseFile != null) videoHtml = new String(releaseFile.readAllBytes(), StandardCharsets.UTF_8);
+        }
+        try (InputStream releaseFile = Uploader.class.getResourceAsStream("/audio.html")) {
+            if (releaseFile != null) audioHtml = new String(releaseFile.readAllBytes(), StandardCharsets.UTF_8);
         }
         JsonArray h = links.getJsonArray("names", new JsonArray());
         links.load();
@@ -84,15 +88,15 @@ public class Uploader {
                         if (FileType.startsWith("video")) {
                             sendHtml(videoHtml, "./video.html", id, fileNames.get(name), res);
                         }
+                        if (FileType.startsWith("audio")) {
+                            sendHtml(audioHtml, "./audio.html", id, fileNames.get(name), res);
+                        }
                         if (fileNames.containsKey(name)) {
                             String encoded = URLEncoder.encode(fileNames.get(name), StandardCharsets.UTF_8);
                             encoded = encoded.replace("+", "%20");
                             res.setHeader("Content-Disposition", "filename*=UTF-8''" + encoded);
                         }
                         res.setContentType(FileType);
-                        if (FileType.startsWith("audio")) {
-                            chromeCompat(file,req,res);
-                        }
                         if (FileType.startsWith("text") || FileType.startsWith("application/xhtml") || FileType.startsWith("multipart/related") || FileType.startsWith("application/javascript") || FileType.startsWith("application/xml") || FileType.startsWith("message/rfc822")) {
                             res.setContentType("text/plain; charset=UTF-8");
                         }
@@ -117,7 +121,7 @@ public class Uploader {
                     }
                     if (fileTypes.containsKey(name)) {
                         String FileType = fileTypes.get(name);
-                        if (FileType.startsWith("video")) {
+                        if (FileType.startsWith("video") || FileType.startsWith("audio")) {
                             chromeCompat(file,req,res);
                             res.send(file.toPath());
                         }
@@ -206,7 +210,6 @@ public class Uploader {
                                 break;
                             } finally {
                                 item.delete();
-                                System.out.println("Success");
                             }
                         }
                     }
@@ -264,9 +267,10 @@ public class Uploader {
             res.send(resHtml);
         });
         boolean staticEnable = true;
-        if (!Path.of("./static").toFile().exists()) {
+        Path staticPath = Path.of("./static");
+        if (!staticPath.toFile().exists()) {
             try {
-                Files.createDirectory(Path.of("./static"));
+                Files.createDirectory(staticPath);
             } catch (Exception ex){
                 ex.printStackTrace();
                 staticEnable = false;
