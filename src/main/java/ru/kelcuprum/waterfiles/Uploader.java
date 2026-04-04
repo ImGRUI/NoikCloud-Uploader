@@ -10,13 +10,6 @@ import express.middleware.FileStatics;
 import express.middleware.Middleware;
 import express.utils.MediaType;
 import express.utils.Status;
-import org.apache.commons.fileupload.FileItem;
-import org.apache.commons.fileupload.FileUploadBase;
-import org.apache.commons.fileupload.RequestContext;
-import org.apache.commons.fileupload.disk.DiskFileItemFactory;
-import org.apache.commons.fileupload.servlet.ServletFileUpload;
-import org.apache.commons.io.FilenameUtils;
-import org.apache.tika.Tika;
 import ru.kelcuprum.caffeinelib.CoffeeLogger;
 import ru.kelcuprum.caffeinelib.config.Config;
 
@@ -26,33 +19,23 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
-import java.util.List;
-import java.security.SecureRandom;
-
-import static ru.kelcuprum.waterfiles.Objects.*;
 
 public class Uploader {
     public static Express server;
     public static Config config = new Config("./config.json");
     public static Config links = new Config("./files.json");
     public static File mainFolder = new File("./files");
-    public static String folder = "./files";
-    public static String html = "";
     public static String videoHtml = "";
     public static String audioHtml = "";
+    public static String somethingHtml = "";
     public static HashMap<String, String> fileNames = new HashMap<>();
     public static HashMap<String, String> fileDeletes = new HashMap<>();
     public static HashMap<String, String> fileTypes = new HashMap<>();
     public static HashMap<String, File> files = new HashMap<>();
-    public static final SecureRandom SECURE_RANDOM = new SecureRandom();
-    public static final Tika tika = new Tika();
-    public static final int Threshold = 1024 * 1024 * 10;
-    public static final int MaxFileSize = 1024 * 1024 * 100;
-    public static final int MaxRequestSize = 1024 * 1024 * 100;
 
     public static void main(String[] args) throws IOException {
         try (InputStream releaseFile = Uploader.class.getResourceAsStream("/index.html")) {
-            if (releaseFile != null) html = new String(releaseFile.readAllBytes(), StandardCharsets.UTF_8);
+            if (releaseFile != null) somethingHtml = new String(releaseFile.readAllBytes(), StandardCharsets.UTF_8);
         }
         try (InputStream releaseFile = Uploader.class.getResourceAsStream("/video.html")) {
             if (releaseFile != null) videoHtml = new String(releaseFile.readAllBytes(), StandardCharsets.UTF_8);
@@ -129,142 +112,9 @@ public class Uploader {
                 }
             }
         });
-        server.post("/upload", (req, res) -> {
-            RequestContext request = new RequestContext() {
-                public String getContentType() {
-                    return req.getContentType();
-                }
-
-                public int getContentLength() {
-                    if (req.getContentLength() > 2147483647) {
-                        return 2147483647;
-                    } else return (int) req.getContentLength();
-                }
-
-                public String getCharacterEncoding() {
-                    return "UTF-8";
-                }
-
-                public InputStream getInputStream() {
-                    return req.getBody();
-                }
-            };
-            if (!ServletFileUpload.isMultipartContent(request)) {
-                System.out.println("Is_Multipart_400");
-                res.setStatus(Status._400);
-                res.json(BAD_REQUEST);
-                return;
-            }
-            DiskFileItemFactory factory = new DiskFileItemFactory();
-            factory.setSizeThreshold(Threshold);
-            factory.setRepository(new File(System.getProperty("java.io.tmpdir")));
-            ServletFileUpload upload = new ServletFileUpload(factory);
-            upload.setHeaderEncoding("UTF-8");
-            upload.setFileSizeMax(MaxFileSize);
-            upload.setSizeMax(MaxRequestSize);
-            try {
-                List<FileItem> formItems = upload.parseRequest(request);
-                if (formItems == null || formItems.isEmpty()) {
-                    System.out.println("Null_Form_Items_400");
-                    res.setStatus(Status._400);
-                    res.json(BAD_REQUEST);
-                } else {
-                    byte count = 0;
-                    for (FileItem item : formItems) {
-                        if (!item.isFormField()) {
-                            if (count == 1) {
-                                System.out.println("Too_Much_Files");
-                                res.setStatus(Status._400);
-                                res.json(COUNT);
-                                return;
-                            } else {
-                                count++;
-                            }
-                        }
-                    }
-                    for (FileItem item : formItems) {
-                        if (!item.isFormField()) {
-                            try (InputStream inputStream = item.getInputStream()) {
-                                String fileName = new File(item.getName()).getName();
-                                String fileTypeMedia = tika.detect(inputStream, fileName);
-                                String extension = FilenameUtils.getExtension(fileName);
-                                String fileType = extension.isEmpty() ? "" : "." + extension;
-                                String id = makeID(7, false);
-                                String delete_id = makeID(21, true);
-                                File storeFile = new File(folder, id + fileType);
-                                item.write(storeFile);
-                                files.put(id, storeFile);
-                                addFilename(id, fileName, delete_id, fileTypeMedia);
-                                JsonObject resp = new JsonObject();
-                                resp.addProperty("id", id);
-                                resp.addProperty("type", fileTypeMedia);
-                                resp.addProperty("ext", extension);
-                                resp.addProperty("url", String.format("%1$s/%2$s", config.getString("url", "https://noikcloud.xyz"), id));
-                                resp.addProperty("delete_url", String.format("%1$s/delete/%2$s", config.getString("url", "https://noikcloud.xyz"), delete_id));
-                                res.json(resp);
-                            } catch (Exception e) {
-                                System.out.println("Parse_500");
-                                e.printStackTrace();
-                                res.setStatus(Status._500);
-                                res.json(getErrorObject(e));
-                                break;
-                            } finally {
-                                item.delete();
-                            }
-                        }
-                    }
-                }
-            } catch (FileUploadBase.SizeLimitExceededException e) {
-                System.out.println("Size_413");
-                res.setStatus(Status._413);
-                res.json(PAYLOAD);
-            } catch (Exception e) {
-                System.out.println("500");
-                e.printStackTrace();
-                res.setStatus(Status._500);
-                res.json(getErrorObject(e));
-            }
-        });
-        server.all("/delete/:id", (req, res) -> {
-            String id = req.getParam("id");
-            String idFile = "";
-            for (String name : fileDeletes.keySet()) {
-                if (fileDeletes.get(name).contains(id)) idFile = name;
-            }
-            if (fileDeletes.containsValue(id)) {
-                File file = getFileByID(idFile);
-                if (file != null) {
-                    String name = file.getName().split("\\.")[0];
-                    if (name.equals(idFile)) {
-                        file.delete();
-                        fileNames.remove(idFile);
-                        fileDeletes.remove(idFile);
-                        files.remove(idFile, file);
-                        res.send("File deleted");
-                    }
-                }
-            } else {
-                res.setStatus(Status._404);
-                res.json(NOT_FOUND);
-            }
-        });
         server.all("/", (req, res) -> {
-            String name = config.getString("name", "{host}")
-                    .replace("{host}", req.getHost().contains("localhost") || req.getHost().contains("127.0.0.1") ? "NoikCloud > Uploader" : req.getHost());
-            String page = html;
-            File filePage = new File("./index.html");
-            if (filePage.exists()) {
-                try {
-                    page = Files.readString(filePage.toPath());
-                } catch (Exception ignored) {
-                    ignored.printStackTrace();
-                }
-            }
-            String resHtml = page.replace("{hostname}", name)
-                    .replace("{accent_color}", config.getString("accent_color", "#bf6a6a"))
-                    .replace("{delete_color}", config.getString("delete_color", "#652c2d"));
             res.setContentType(MediaType._html);
-            res.send(resHtml);
+            res.send(somethingHtml);
         });
         boolean staticEnable = true;
         Path staticPath = Path.of("./static");
@@ -281,54 +131,12 @@ public class Uploader {
             res.setStatus(Status._404);
             res.send("File not found");
         });
-        server.listen(config.getNumber("port", 1984).intValue());
+        server.listen(config.getNumber("port", 8419).intValue());
         LOG.log("-=-=-=-=-=-=-=-=-=-=-=-=-");
-        LOG.log("Uploader started");
-        LOG.log(String.format("Port: %s", config.getNumber("port", 1984).intValue()));
+        LOG.log("Archive started");
+        LOG.log(String.format("Port: %s", config.getNumber("port", 8419).intValue()));
         LOG.log("-=-=-=-=-=-=-=-=-=-=-=-=-");
     }
-    public static void addFilename(String id, String name, String delete_id, String file_type_media) {
-        fileNames.put(id, name);
-        fileDeletes.put(id, delete_id);
-        fileTypes.put(id, file_type_media);
-        saveFilenames();
-    }
-    public static void saveFilenames() {
-        JsonArray j = new JsonArray();
-        for (String key : fileNames.keySet()) {
-            JsonObject jj = new JsonObject();
-            jj.addProperty("id", key);
-            jj.addProperty("name", fileNames.get(key));
-            jj.addProperty("type", fileTypes.get(key));
-            if (fileDeletes.containsKey(key))
-                jj.addProperty("delete", fileDeletes.get(key));
-            j.add(jj);
-        }
-        links.setJsonArray("names", j);
-        links.save();
-    }
-
-    public static String makeID(int length, boolean isDelete) {
-        StringBuilder result = new StringBuilder();
-        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-";
-        int charactersLength = characters.length();
-        int counter = 0;
-        while (counter < length) {
-            result.append(characters.charAt(SECURE_RANDOM.nextInt(charactersLength)));
-            counter += 1;
-        }
-        return isIDCorrect(result.toString(), isDelete) ? result.toString() : makeID(length, isDelete);
-    }
-
-    public static boolean isIDCorrect(String id, boolean isDelete) {
-        if (!isDelete) {
-            File file = getFileByID(id);
-            if (file != null)
-                return !file.getName().split("\\.")[0].equals(id);
-        } else return !fileDeletes.containsKey(id);
-        return true;
-    }
-
 
     public static void checkFolders() throws IOException {
         if (!mainFolder.exists()) Files.createDirectory(mainFolder.toPath());
@@ -375,5 +183,5 @@ public class Uploader {
             res.setHeader("content-range", "bytes " + req.getHeader("range").getFirst() + file.length() + "/" + (file.length() + 1));
     }
 
-    public static CoffeeLogger LOG = new CoffeeLogger("NoikCloud/Uploader");
+    public static CoffeeLogger LOG = new CoffeeLogger("Archive/Uploader");
 }
